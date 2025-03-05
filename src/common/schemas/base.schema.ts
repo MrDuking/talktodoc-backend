@@ -1,12 +1,12 @@
-import { Prop } from "@nestjs/mongoose"
+// import { Prop } from "@nestjs/mongoose"
 
-export abstract class BaseSchema {
-    @Prop()
-    deletedAt?: Date
+// export abstract class BaseSchema {
+//     @Prop()
+//     deletedAt?: Date
 
-    @Prop()
-    createdAt?: Date
+//     @Prop()
+//     createdAt?: Date
 
-    @Prop()
-    updatedAt?: Date
-}
+//     @Prop()
+//     updatedAt?: Date
+// }
