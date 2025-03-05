@@ -1,0 +1,58 @@
+stages:
+  - build
+  - update_helm_chart
+
+variables:
+  IMAGE_NAME: "ludo-auth"
+  PROJECT_ID: "deal-ton-tma"
+  REGION: "asia-southeast1-a"
+  ARTIFACT_REGISTRY: "asia-southeast1-docker.pkg.dev/deal-ton-tma/vgs-artifact-registry"
+  GKE_CLUSTER_NAME: "vgs-cluster-asia-southeast1-a-dev"
+build_prod:
+  stage: build
+  script:
+    - echo "$GCP_SERVICE_ACCOUNT_KEY" > ${CI_PROJECT_DIR}/gcloud-service-key.json
+    - echo "Authenticating with Google Cloud..."
+    - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcloud-service-key.json
+    - gcloud config set project $PROJECT_ID
+    - gcloud auth configure-docker ${REGION}-docker.pkg.dev
+
+    - gcloud config set compute/zone ${REGION}
+    - gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${REGION} --project ${PROJECT_ID}
+    - gcloud builds submit -t ${ARTIFACT_REGISTRY}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA} .
+  only:
+    - production
+  tags:
+    - deal-ton
+    - prod
+
+update_helm_chart:
+  stage: update_helm_chart
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
+    - sudo mkdir -p /root/.ssh
+    - echo "$SSH_PRIVATE_KEY" > /root/.ssh/id_rsa
+    - chmod 600 /root/.ssh/id_rsa
+    - ssh-keyscan -H gitlab.com >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+      # run ssh-agent
+    - eval $(ssh-agent -s)
+      # add ssh key stored in SSH_PRIVATE_KEY variable to the agent store
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    # Git
+    - git config --global user.email "gitlab-ci@gmail.com"
+    - git config --global user.name "gitlab-ci"
+    - git clone git@gitlab.com:vgameslab/internship2024/ludo-manifest.git
+    - cd ludo-manifest
+    - ls -latr
+  script:
+  # Update Image TAG
+    - sed -i "s/ludo-auth:.*/ludo-auth:${CI_COMMIT_SHORT_SHA}/g" ludo-auth/values.yaml
+    - git add ludo-auth/values.yaml
+    - git commit -am "update ludo auth image"
+    - git push
+  only:
+    - production
+  tags:
+    - deal-ton
+    - prod

@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "strictPropertyInitialization": false,
+        "strictNullChecks": true,
+        "noImplicitAny": true,
+        "strictBindCallApply": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "target": "es2021",
+        "incremental": true,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": "./",
+        "paths": {
+            "@utils": ["src/utils"]
+        }
+    },
+    "include": ["src/**/*", "./babel.config.js", "./jest.config.js", "./commitlint.config.js", "./tsconfig.build.json", "src/schemas/.schema.ts", "src/modules/user/dtos/.ts", "api-gateway/src/grpcs"]
+}

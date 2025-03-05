@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package user;
+
+// Defining the UserService with two RPC methods: GetAllUsers and GetUserById
+service UserService {
+  rpc GetAllUsers (GetAllUserRequest) returns (UserResponse) {}
+  rpc GetUserById (GetUserRequest) returns (GetUserWithDetailsResponse) {}
+  rpc getListUserId (Empty) returns (ListUserIds) {}
+  rpc loginGrpc (UserLogin) returns (UserResponseDetail) {}
+  rpc updateUserPrenium (UpdateUserPrenium) returns (UserResponseDetail) {}
+  rpc updateUserAvatar (UpdateUserAvatar) returns (UserResponseDetail) {}
+  rpc updateUserRefBy (UpdateUserRefBy) returns (UserResponseDetail) {}
+  rpc findUserByRefCode (FindUserRefCode) returns (UserResponseDetail) {}
+  rpc findUserById (GetUserRequest) returns (UserResponseDetail) {}
+}
+
+// Empty message for RPC methods that don't require input
+message Empty {}
+
+message GetAllUserRequest {
+  int32 page = 1;
+  int32 take = 2;
+  string name = 3;
+  string userId = 4;
+}
+
+message Inventory {
+  string userId = 1;
+  int32 currencyId = 2;
+  int32 amount = 3;
+}
+
+// User message that encapsulates user details
+message User {
+  string id = 1;
+  bool isTelegramPremiumUser = 2;
+  string email = 3;
+  string name = 4;
+  string walletAddress = 5;
+  int32 exp = 6;
+  string lastLoginDate = 7;
+  string refCode = 8;
+  string refCodeUpdateTime = 9;
+  string refBy = 10;
+  string refTime = 11;
+  int32 referralPoint = 12;
+  int32 premiumReferralPoint = 13;
+  string sessionId = 14;
+  string countryCode = 15;
+  string lastLoginIP = 16;
+  string avatar = 17;
+  int32 playTime = 18;
+  repeated Inventory inventories = 19;
+}
+
+message UserLogin {
+    string id = 1;
+    bool isTelegramPremiumUser = 2;
+    string email = 3;
+    string name = 4;
+    string walletAddress = 5;
+    int32 exp = 6;
+    string lastLoginDate = 7;
+    string refCode = 8;
+    string refCodeUpdateTime = 9;
+    string refBy = 10;
+    string refTime = 11;
+    int32 referralPoint = 12;
+    int32 premiumReferralPoint = 13;
+    string sessionId = 14;
+    string countryCode = 15;
+    string lastLoginIP = 16;
+    string avatar = 17;
+    int32 playTime = 18;
+}
+
+// Property message representing user's property data
+message UserProperty {
+  string userId = 1;
+  int32 coin = 2;
+  int32 diamond = 3;
+  int32 usingAvatar = 4;
+  int32 usingFrame = 5;
+  int32 usingDice = 6;
+}
+
+// Request message for fetching a user by their userId
+message GetUserRequest {
+  string userId = 1;  // The ID of the user being requested
+}
+
+message UserDetail {
+  string id = 1;
+  bool isTelegramPremiumUser = 2;
+  string email = 3;
+  string name = 4;
+  string walletAddress = 5;
+  string exp = 6;
+  string lastLoginDate = 7;
+  string refCode = 8;
+  string refCodeUpdateTime = 9;
+  string refBy = 10;
+  string refTime = 11;
+  int32 referralPoint = 12;
+  int32 premiumReferralPoint = 13;
+  string sessionId = 14;
+  string countryCode = 15;
+  string lastLoginIP = 16;
+  string avatar = 17;
+  int32 playTime = 18;
+  repeated Inventory inventories = 19;
+  UserItems items = 20;
+  UserGameInfo gameInfo = 21;
+}
+
+// Response message when retrieving a user with their property and game info details
+message GetUserWithDetailsResponse {
+  UserDetail data = 1;
+  int32 code = 2;           // Status code (e.g., success, failure)
+}
+
+// A collection of multiple User messages
+message UserData {
+  repeated User users = 1; // List of users
+}
+
+message UserPaginationData {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 pages = 4;
+}
+
+// Response message when fetching all users
+message UserResponse {
+  int32 code = 1;          // Status code (e.g., success, failure)
+  UserPaginationData data = 2;       // UserData containing the list of users
+}
+
+message UserItem {
+  string name = 1;
+  string imageUrl = 2;
+  int32 currencyId = 3;
+  int32 cost = 4;
+  int32 itemId = 5;
+  bool isActive = 6;
+}
+
+message UserItems {
+  string _id = 1;
+  string userId = 2;
+  repeated UserItem frames = 3;
+  repeated UserItem dices = 4;
+  repeated UserItem emojis = 5;
+}
+
+message UserGameInfo {
+  string userId = 1;
+  int32 totalMatchPlayed = 2;
+  int32 totalClassicModeWins = 3;
+  int32 totalRushModeWins = 4;
+  int32 totalBlitzModeWins = 5;
+  int32 totalTwoPlayerWins = 6;
+  int32 totalFourPlayerWins = 7;
+  int32 totalPawnCaptured = 8;
+  int32 totalCoinEarned = 9;
+  int32 totalCoinSpend = 10;
+  int32 totalDiamondEarned = 11;
+  int32 totalDiamondSpend = 12;
+  int32 totalLutonEarned = 13;
+  int32 totalLutonSpend = 14;
+  int32 totalQuestPointEarned = 15;
+  int32 totalAdsWatched = 16;
+  int32 totalReferralPointEarned = 17;
+  int32 totalPremiumReferralPointEarned = 18;
+  int32 totalFriendInvited = 19;
+}
+
+message ListUserIds {
+    repeated string listUserIds = 1;
+}
+message UpdateUserPrenium {
+    string userId = 1;
+    bool isTelegramPremiumUser = 2;
+}
+
+
+message UserResponseDetail {
+    int32 statusCode = 1;
+    string message = 2;
+    string code = 3;
+    UserLogin data = 4;
+}
+
+message UpdateUserAvatar {
+    string userId = 1;
+    string avatar = 2;
+}
+
+message UpdateUserRefBy {
+    string userId = 1;
+    string refBy = 2;
+}
+
+message FindUserRefCode {
+    string refCode = 1;
+}
+

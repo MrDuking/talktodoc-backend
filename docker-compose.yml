@@ -1,0 +1,16 @@
+version: "3"
+name: "ton_nft_service"
+services:
+    ton_nft_service:
+        image: duyvgames/ton-nft-service:latest
+        container_name: ton_nft_service
+        build:
+            context: .
+            dockerfile: Dockerfile
+        env_file:
+            - .env
+        volumes:
+            - /app/node_modules
+            - .:/app
+        ports:
+            - 2005:3001
