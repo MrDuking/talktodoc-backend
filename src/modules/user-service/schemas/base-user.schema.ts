@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
 import { Document } from "mongoose"
 
-export type UserDocument = User & Document
+export type BaseUserDocument = BaseUser & Document
 
-@Schema({ discriminatorKey: "role", timestamps: true }) // Thêm discriminatorKey
-export class User {
+@Schema({ discriminatorKey: "role", timestamps: true })
+export class BaseUser {
     @Prop({ required: true, unique: true })
     username!: string
 
@@ -21,4 +21,4 @@ export class User {
     fullName!: string
 }
 
-export const UserSchema = SchemaFactory.createForClass(User)
+export const BaseUserSchema = SchemaFactory.createForClass(BaseUser)
