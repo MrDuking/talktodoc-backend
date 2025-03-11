@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common"
 import { ApiTags } from "@nestjs/swagger"
 import { CreatePatientDto, UpdatePatientDto } from "./dtos/patient.dto"
-import { UsersService } from "./user.service"
 import { Patient } from "./schemas"
+import { UsersService } from "./user.service"
 
 @ApiTags("Patients")
 @Controller("api/v1/patients")
@@ -14,7 +14,7 @@ export class PatientController {
         return await this.usersService.getAllPatients()
     }
 
-    @Get(":id") 
+    @Get(":id")
     async getPatientById(@Param("id") id: string): Promise<Patient> {
         return await this.usersService.getPatientById(id)
     }

@@ -15,7 +15,11 @@
         "@/*": ["src/*"],
         "@modules/*": ["src/modules/*"],
         "@common/*": ["src/common/*"]
-      }
+      },
+      "typeRoots": [
+        "./node_modules/@types",
+        "./src/types"
+    ]
     },
     "include": ["src"],
     "exclude": ["node_modules", "dist"]
