@@ -3,7 +3,7 @@ import { Document } from "mongoose"
 
 export type UserDocument = User & Document
 
-@Schema({ discriminatorKey: "role", timestamps: true }) // Thêm discriminatorKey
+@Schema({ discriminatorKey: "role", timestamps: true }) // Add discriminatorKey
 export class User {
     @Prop({ required: true, unique: true })
     username!: string
@@ -21,4 +21,25 @@ export class User {
     fullName!: string
 }
 
-export const UserSchema = SchemaFactory.createForClass(User)
+const UserSchema = SchemaFactory.createForClass(User)
+
+// 🛠 Modify to keep both `_id` and `id`
+UserSchema.set("toJSON", {
+    virtuals: true,
+    versionKey: false,
+    transform: (_, ret) => {
+        ret.id = ret._id.toString() // Duplicate `_id` to `id`
+        return ret
+    }
+})
+
+UserSchema.set("toObject", {
+    virtuals: true,
+    versionKey: false,
+    transform: (_, ret) => {
+        ret.id = ret._id.toString() // Duplicate `_id` to `id`
+        return ret
+    }
+})
+
+export { UserSchema }

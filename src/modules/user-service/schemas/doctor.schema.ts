@@ -6,11 +6,15 @@ export type DoctorDocument = Doctor & Document
 
 @Schema()
 export class Doctor extends User {
+
     @Prop({ required: true })
     specialty!: string[]
 
     @Prop({ required: true })
     hospitalId!: string
+
+    @Prop({ required: true })
+    phoneNumber!: string
 
     @Prop({ default: 0 })
     experienceYears!: number

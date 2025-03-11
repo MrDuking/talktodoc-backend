@@ -27,6 +27,10 @@ export class CreateDoctorDto {
     @IsString()
     @IsNotEmpty()
     hospitalId!: string
+    
+    @IsString()
+    @IsNotEmpty()
+    phoneNumber!: string
 
     @IsNumber()
     experienceYears!: number
@@ -42,6 +46,7 @@ export class CreateDoctorDto {
 }
 
 export class UpdateDoctorDto {
+
     @IsOptional()
     @IsString()
     fullName?: string
@@ -54,6 +59,10 @@ export class UpdateDoctorDto {
     @IsString()
     hospitalId?: string
 
+    @IsString()
+    @IsNotEmpty()
+    phoneNumber!: string
+    
     @IsOptional()
     @IsNumber()
     experienceYears?: number
