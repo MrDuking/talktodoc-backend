@@ -1,35 +1,57 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common"
-import { ApiTags } from "@nestjs/swagger"
-import { CreateDoctorDto, UpdateDoctorDto } from "./dtos/doctor.dto"
-import { UsersService } from "./user.service"
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
+import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { UsersService } from "./user.service";
+import { CreateDoctorDto, UpdateDoctorDto } from "./dtos/index";
+import { UserRole } from "@common/enum/user_role.enum";
 
-@ApiTags("Doctors")
+@ApiTags("doctors")
 @Controller("api/v1/doctors")
 export class DoctorController {
     constructor(private readonly usersService: UsersService) {}
 
+    @ApiOperation({ summary: "Get all doctors" })
+    @ApiResponse({ status: 200, description: "Return all doctors." })
     @Get()
-    async getAllDoctors() {
-        return await this.usersService.getAllDoctors()
+    findAllDoctors() {
+        return this.usersService.getAllDoctors();
     }
 
+    @ApiOperation({ summary: "Get a doctor by ID" })
+    @ApiResponse({ status: 200, description: "Return a doctor." })
+    @ApiResponse({ status: 404, description: "Doctor not found." })
+    @ApiParam({ name: "id", description: "Doctor ID" })
     @Get(":id")
-    async getDoctorById(@Param("id") id: string) {
-        return await this.usersService.getDoctorById(id)
+    findDoctorById(@Param("id") id: string) {
+        return this.usersService.getDoctorById(id);
     }
 
+    @ApiOperation({ summary: "Create a new doctor" })
+    @ApiResponse({ status: 201, description: "Doctor created successfully." })
+    @ApiResponse({ status: 400, description: "Bad Request." })
+    @ApiBody({ type: CreateDoctorDto })
     @Post()
-    async createDoctor(@Body() createDoctorDto: CreateDoctorDto) {
-        return await this.usersService.createDoctor(createDoctorDto)
+    @HttpCode(HttpStatus.CREATED)
+    createDoctor(@Body() createDoctorDto: CreateDoctorDto) {
+        return this.usersService.createDoctor(createDoctorDto);
     }
 
+    @ApiOperation({ summary: "Update an existing doctor" })
+    @ApiResponse({ status: 200, description: "Doctor updated successfully." })
+    @ApiResponse({ status: 404, description: "Doctor not found." })
+    @ApiParam({ name: "id", description: "Doctor ID" })
+    @ApiBody({ type: UpdateDoctorDto })
     @Put(":id")
-    async updateDoctor(@Param("id") id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
-        return await this.usersService.updateDoctor(id, updateDoctorDto)
+    updateDoctor(@Param("id") id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
+        return this.usersService.updateDoctor(id, updateDoctorDto);
     }
 
+    @ApiOperation({ summary: "Delete a doctor" })
+    @ApiResponse({ status: 204, description: "Doctor deleted successfully." })
+    @ApiResponse({ status: 404, description: "Doctor not found." })
+    @ApiParam({ name: "id", description: "Doctor ID" })
     @Delete(":id")
-    async deleteDoctor(@Param("id") id: string) {
-        return await this.usersService.deleteDoctor(id)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    deleteDoctor(@Param("id") id: string) {
+        return this.usersService.deleteDoctor(id);
     }
 }

@@ -1,33 +1,37 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
-import { Document } from "mongoose"
-import { BaseUserSchema } from "./base-user.schema"
-import { User } from "./user.schema"
-export type DoctorDocument = Doctor & Document
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { BaseUser, BaseUserSchema } from "./base-user.schema";
+import { UserRole } from "@common/enum/user_role.enum";
+
+export type DoctorDocument = Doctor & Document;
 
 @Schema()
-export class Doctor extends User {
+export class Doctor extends BaseUser {
+    @Prop({ type: [String], required: true })
+    specialty!: string[];
 
     @Prop({ required: true })
-    specialty!: string[]
-
-    @Prop({ required: true })
-    hospitalId!: string
-
-    @Prop({ required: true })
-    phoneNumber!: string
+    hospitalId!: string;
 
     @Prop({ default: 0 })
-    experienceYears!: number
+    experienceYears!: number;
 
     @Prop()
-    licenseNo!: string
+    licenseNo!: string;
 
-    @Prop([{ date: String, timeSlots: [String] }])
-    availability!: Array<{ date: string; timeSlots: string[] }>
+    @Prop({
+        type: [
+            {
+                date: { type: String },
+                timeSlots: { type: [String] }
+            }
+        ]
+    })
+    availability!: Array<{ date: string; timeSlots: string[] }>;
 
     @Prop()
-    rank!: string
+    rank!: string;
 }
 
-export const DoctorSchema = SchemaFactory.createForClass(Doctor)
-export const DoctorModel = BaseUserSchema.discriminator("doctor", DoctorSchema) // Áp dụng discriminator
+export const DoctorSchema = SchemaFactory.createForClass(Doctor);
+export const DoctorModel = BaseUserSchema.discriminator(UserRole.DOCTOR, DoctorSchema);

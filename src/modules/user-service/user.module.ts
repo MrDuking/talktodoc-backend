@@ -1,24 +1,25 @@
-import { Module, forwardRef } from "@nestjs/common"
-import { MongooseModule } from "@nestjs/mongoose"
-import { AuthModule } from "../auth/auth.module"
-import { DoctorController } from "./doctor.controller" // Import DoctorController
-import { PatientController } from "./patient.controller"
-import { Patient, PatientSchema } from "./schemas"
-import { Doctor, DoctorSchema } from "./schemas/doctor.schema" // Import Doctor schema
-import { User, UserSchema } from "./schemas/user.schema"
-import { UsersController } from "./user.controller"
-import { UsersService } from "./user.service"
+import { Module, forwardRef } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AuthModule } from "../auth/auth.module";
+import { EmployeeController } from "./employee.controller";
+import { DoctorController } from "./doctor.controller";
+import { PatientController } from "./patient.controller";
+import { SpecialityController } from "./speciality.controller";
+import { BaseUser, BaseUserSchema, Doctor, DoctorSchema, Employee, EmployeeSchema, Patient, PatientSchema, Speciality, SpecialitySchema } from "./schemas/index";
+import { UsersService } from "./user.service";
 @Module({
     imports: [
         MongooseModule.forFeature([
-            { name: User.name, schema: UserSchema },
+            { name: BaseUser.name, schema: BaseUserSchema },
             { name: Doctor.name, schema: DoctorSchema },
-            { name: Patient.name, schema: PatientSchema }
+            { name: Employee.name, schema: EmployeeSchema },
+            { name: Patient.name, schema: PatientSchema },
+            { name: Speciality.name, schema: SpecialitySchema }
         ]),
         forwardRef(() => AuthModule)
     ],
-    providers: [UsersService],
-    controllers: [UsersController, DoctorController, PatientController],
+    providers: [UsersService ],
+    controllers: [EmployeeController, DoctorController, PatientController, SpecialityController],
     exports: [UsersService]
 })
 export class UsersModule {}

@@ -1,3 +1,4 @@
+import { UserRole } from "@common/enum/user_role.enum"
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
 import { Document } from "mongoose"
 
@@ -14,11 +15,32 @@ export class BaseUser {
     @Prop({ required: true, unique: true })
     email!: string
 
-    @Prop({ default: "user", enum: ["user", "admin", "doctor", "patient"] })
-    role!: string
-
     @Prop()
     fullName!: string
+
+    @Prop({ required: true })
+    phoneNumber!: string
+
+    @Prop()
+    birthDate!: string
 }
 
 export const BaseUserSchema = SchemaFactory.createForClass(BaseUser)
+
+BaseUserSchema.set("toJSON", {
+    virtuals: true,
+    versionKey: false,
+    transform: (_, ret) => {
+        ret.id = ret._id.toString()
+        return ret
+    }
+})
+
+BaseUserSchema.set("toObject", {
+    virtuals: true,
+    versionKey: false,
+    transform: (_, ret) => {
+        ret.id = ret._id.toString()
+        return ret
+    }
+})
