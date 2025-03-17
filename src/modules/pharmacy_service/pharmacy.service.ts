@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, InternalServerErrorException, BadRequest
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { CreatePharmacyDto, UpdatePharmacyDto } from "./dtos/pharmacy.dto";
-import { Pharmacy, PharmacyDocument } from "./schemas/pharmacy.schema";
+import { Pharmacy, PharmacyDocument } from "./schema/pharmacy.schema";
 
 @Injectable()
 export class PharmacyService {

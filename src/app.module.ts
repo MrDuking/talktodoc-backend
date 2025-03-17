@@ -2,8 +2,9 @@ import { Module } from "@nestjs/common"
 import { ConfigModule, ConfigService } from "@nestjs/config"
 import { MongooseModule } from "@nestjs/mongoose"
 import { AuthModule } from "./modules/auth/auth.module"
-import { PharmacyModule } from "./modules/user-service/pharmacy.module"
+import { PharmacyModule } from "./modules/pharmacy_service/pharmacy.module"
 import { UsersModule } from "./modules/user-service/user.module"
+import { SpecialityModule } from "./modules/speciality_service/speciality.module"
 
 @Module({
     imports: [
@@ -18,7 +19,8 @@ import { UsersModule } from "./modules/user-service/user.module"
         }),
         UsersModule,
         AuthModule,
-        PharmacyModule
+        PharmacyModule,
+        SpecialityModule
     ]
 })
 export class AppModule {}

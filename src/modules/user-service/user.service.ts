@@ -6,7 +6,7 @@ import { BaseUser, BaseUserDocument } from "./schemas/base-user.schema"
 import { Doctor, DoctorDocument } from "./schemas/doctor.schema"
 import { Employee, EmployeeDocument } from "./schemas/employee.schema"
 import { Patient, PatientDocument } from "./schemas/patient.schema"
-import { Speciality, SpecialityDocument } from "./schemas/speciality.schema"
+import { Speciality, SpecialityDocument } from "../speciality_service/schemas/speciality.schema"
 
 @Injectable()
 export class UsersService {
@@ -108,30 +108,4 @@ export class UsersService {
         if (!result) throw new NotFoundException("Patient not found")
     }
 
-    // ===================== API CHO CHUYÊN KHOA (SPECIALITY) =====================
-    async getAllSpecialities(): Promise<Speciality[]> {
-        return await this.specialityModel.find().exec()
-    }
-
-    async getSpecialityById(id: string): Promise<Speciality> {
-        const speciality = await this.specialityModel.findById(id).exec()
-        if (!speciality) throw new NotFoundException("Speciality not found")
-        return speciality
-    }
-
-    async createSpeciality(createSpecialityDto: CreateSpecialityDto): Promise<Speciality> {
-        const speciality = new this.specialityModel(createSpecialityDto)
-        return await speciality.save()
-    }
-
-    async updateSpeciality(id: string, updateSpecialityDto: UpdateSpecialityDto): Promise<Speciality> {
-        const updatedSpeciality = await this.specialityModel.findByIdAndUpdate(id, updateSpecialityDto, { new: true }).exec()
-        if (!updatedSpeciality) throw new NotFoundException("Speciality not found")
-        return updatedSpeciality
-    }
-
-    async deleteSpeciality(id: string): Promise<void> {
-        const result = await this.specialityModel.findByIdAndDelete(id).exec()
-        if (!result) throw new NotFoundException("Speciality not found")
-    }
 }

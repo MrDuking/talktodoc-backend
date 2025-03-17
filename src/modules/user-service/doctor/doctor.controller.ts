@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { UsersService } from "./user.service";
-import { CreateDoctorDto, UpdateDoctorDto } from "./dtos/index";
+import { UsersService } from "../user.service";
+import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
 import { UserRole } from "@common/enum/user_role.enum";
 
 @ApiTags("doctors")
