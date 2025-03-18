@@ -1,20 +1,9 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, IsNumber } from "class-validator";
-import { UserRole } from "@common/enum/user_role.enum";
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreateEmployeeDto {
-    @ApiProperty({ example: "duk_employee", description: "Username for the employee" })
-    @IsString()
-    @IsNotEmpty()
-    username!: string;
-
-    @ApiProperty({ example: "password123", description: "Password for the employee" })
-    @IsString()
-    @IsNotEmpty()
-    password!: string;
-
     @ApiProperty({ example: "duk@example.com", description: "Employee's email" })
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
     email!: string;
 
@@ -22,11 +11,6 @@ export class CreateEmployeeDto {
     @IsString()
     @IsNotEmpty()
     fullName!: string;
-
-    @ApiProperty({ example: "1995-07-20", description: "Employee's birth date" })
-    @IsString()
-    @IsNotEmpty()
-    birthDate!: string;
 
     @ApiProperty({ example: "Manager", description: "Position of the employee" })
     @IsString()
@@ -38,8 +22,8 @@ export class CreateEmployeeDto {
     @IsNotEmpty()
     department!: string;
 
-    @ApiProperty({ example: "2023-05-15", description: "Start date of the employee" })
-    @IsString()
+    @ApiProperty({ example: "2023-05-15", description: "Start date of the employee (YYYY-MM-DD)" })
+    @IsDateString()
     @IsNotEmpty()
     startDate!: string;
 
@@ -48,12 +32,22 @@ export class CreateEmployeeDto {
     @IsNotEmpty()
     phoneNumber!: string;
 
+    @ApiProperty({ example: "avatar_url.jpg", description: "Employee's avatar", required: false })
+    @IsOptional()
+    @IsString()
+    avatar?: string;
+
+    @ApiProperty({ example: true, description: "Is employee active?", required: false })
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
+
     @ApiProperty({ example: 5000, description: "Salary of the employee", required: false })
     @IsOptional()
     @IsNumber()
     salary?: number;
 
-    @ApiProperty({ example: "Permanent", description: "Type of contract", required: false })
+    @ApiProperty({ example: "Full-time", description: "Type of contract", required: false })
     @IsOptional()
     @IsString()
     contractType?: string;

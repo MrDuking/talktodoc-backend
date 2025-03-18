@@ -1,12 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
-import { nanoid } from "nanoid";
 
 export type HospitalDocument = Hospital & Document;
 
 @Schema()
 export class Hospital {
-    @Prop({ required: true, unique: true, default: () => `HS${nanoid(6)}` })
+    @Prop({ required: true, unique: true, default: () => `HS${Math.floor(100000 + Math.random() * 900000)}` })
     id!: string;
 
     @Prop({ required: true })

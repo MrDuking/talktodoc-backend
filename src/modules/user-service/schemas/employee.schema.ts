@@ -1,14 +1,14 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Model } from "mongoose";
 import { BaseUser } from "./base-user.schema";
 import { UserRole } from "@common/enum/user_role.enum";
-import { nanoid } from "nanoid";
 
 export type EmployeeDocument = Employee & Document;
+export type EmployeeModel = Model<EmployeeDocument>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Employee extends BaseUser {
-    @Prop({ required: true, unique: true, default: () => `EM${nanoid(6)}` })
+    @Prop({ required: true, unique: true })
     id!: string;
 
     @Prop({ default: UserRole.EMPLOYEE })
@@ -20,10 +20,10 @@ export class Employee extends BaseUser {
     @Prop({ required: true })
     department!: string;
 
-    @Prop({ required: true })
-    startDate!: string;
+    @Prop({ type: Date, required: true })
+    startDate!: Date;
 
-    @Prop()
+    @Prop({ default: 0 })
     salary?: number;
 
     @Prop()
@@ -31,3 +31,24 @@ export class Employee extends BaseUser {
 }
 
 export const EmployeeSchema = SchemaFactory.createForClass(Employee);
+
+/**
+ * Middleware đảm bảo `id` là duy nhất
+ */
+EmployeeSchema.pre<EmployeeDocument>("save", async function (next) {
+    if (!this.id) {
+        let uniqueId;
+        let isUnique = false;
+        const EmployeeModel = this.constructor as EmployeeModel;
+        while (!isUnique) {
+            uniqueId = `EM${Math.floor(100000 + Math.random() * 900000)}`;
+            const existing = await EmployeeModel.findOne({ id: uniqueId });
+            if (!existing) {
+                isUnique = true;
+            }
+        }
+
+        this.id = uniqueId;
+    }
+    next();
+});

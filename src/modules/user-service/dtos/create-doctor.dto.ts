@@ -1,6 +1,20 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsArray, IsEmail, IsNotEmpty, IsNumber, IsString } from "class-validator";
-import { UserRole } from "@common/enum/user_role.enum";
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+import { Types } from "mongoose";
+
+class AvailabilityDto {
+    @ApiProperty({ example: "2025-03-20", description: "Date of availability (YYYY-MM-DD)" })
+    @IsDateString()
+    @IsNotEmpty()
+    date!: string;
+
+    @ApiProperty({ example: ["08:00-09:00", "10:00-11:00"], description: "Available time slots" })
+    @IsArray()
+    @IsString({ each: true })
+    @IsNotEmpty()
+    timeSlots!: string[];
+}
 
 export class CreateDoctorDto {
     @ApiProperty({ example: "duk", description: "Username for the doctor" })
@@ -18,54 +32,77 @@ export class CreateDoctorDto {
     @IsNotEmpty()
     email!: string;
 
-    // @ApiProperty({ example: UserRole.DOCTOR, description: "Role of the doctor", default: UserRole.DOCTOR })
-    // @IsString()
-    // role: UserRole = UserRole.DOCTOR;
-
     @ApiProperty({ example: "Dr. Duk Nguyen", description: "Full name of the doctor" })
     @IsString()
     @IsNotEmpty()
     fullName!: string;
 
-    @ApiProperty({ example: "1995-07-20", description: "Doctor's birth date" })
-    @IsString()
+    @ApiProperty({ example: "1995-07-20", description: "Doctor's birth date (YYYY-MM-DD)" })
+    @IsDateString()
     @IsNotEmpty()
     birthDate!: string;
-
-    @ApiProperty({ example: ["Cardiology"], description: "Doctor's specialties" })
-    @IsArray()
-    @IsString({ each: true }) // Đảm bảo mỗi phần tử trong mảng là string
-    @IsNotEmpty()
-    specialty!: string[];
-
-    @ApiProperty({ example: "65fdc6a2b3e8a8f4b1b2c3d4", description: "Hospital ID where the doctor works" })
-    @IsString()
-    @IsNotEmpty()
-    hospitalId!: string;
 
     @ApiProperty({ example: "0987123456", description: "Doctor's phone number" })
     @IsString()
     @IsNotEmpty()
     phoneNumber!: string;
 
-    @ApiProperty({ example: 10, description: "Years of experience in the medical field" })
-    @IsNumber()
-    experienceYears!: number;
-
-    @ApiProperty({ example: "MED123456", description: "Doctor's license number" })
+    @ApiProperty({ example: "avatar_url.jpg", description: "Doctor's avatar", required: false })
+    @IsOptional()
     @IsString()
-    licenseNo!: string;
+    avatar?: string;
+
+    @ApiProperty({ example: true, description: "Is doctor active?", required: false })
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
 
     @ApiProperty({
-        example: [{ date: "2025-03-11", timeSlots: ["09:00-11:00", "14:00-16:00"] }],
-        description: "Doctor's availability schedule"
+        example: { name: "Hanoi", code: 1, division_type: "City", codename: "hanoi", phone_code: 24 },
+        description: "City where doctor is located",
+        required: false,
     })
+    @IsOptional()
+    city?: {
+        name: string;
+        code: number;
+        division_type: string;
+        codename: string;
+        phone_code: number;
+    };
+
+    @ApiProperty({ example: ["605c72c3fc13ae1b3c000001"], description: "List of specialty IDs" })
     @IsArray()
-    availability!: Array<{ date: string; timeSlots: string[] }>;
+    @IsOptional()
+    @IsString({ each: true })
+    specialty!: Types.ObjectId[];
+
+    @ApiProperty({ example: "605c72c3fc13ae1b3c000002", description: "Hospital ID" })
+    @IsString()
+    @IsNotEmpty()
+    hospitalId!: string;
+
+    @ApiProperty({ example: 10, description: "Years of experience in the medical field" })
+    @IsNumber()
+    @IsOptional()
+    experienceYears?: number;
+
+    @ApiProperty({ example: "MD123456", description: "Doctor's license number" })
+    @IsString()
+    @IsNotEmpty()
+    licenseNo!: string;
+
+    @ApiProperty({ type: [AvailabilityDto], description: "Doctor's availability schedule" })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => AvailabilityDto)
+    @IsOptional()
+    availability?: AvailabilityDto[];
 
     @ApiProperty({ example: "Senior Doctor", description: "Doctor's rank or title" })
     @IsString()
-    rank!: string;
+    @IsOptional()
+    rank?: string;
 }
 
 export class UpdateDoctorDto extends PartialType(CreateDoctorDto) {}
