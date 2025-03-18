@@ -20,6 +20,12 @@ export class Pharmacy {
 
     @Prop({ type: [String], default: [] })
     availableMedicines!: string[];
+
+    @Prop({ default: true })
+    active!: boolean;
+
+    @Prop({ default: false })
+    is24Hours!: boolean;
 }
 
 export const PharmacySchema = SchemaFactory.createForClass(Pharmacy);

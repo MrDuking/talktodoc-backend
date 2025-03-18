@@ -1,13 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
+import { Body, Query, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { UsersService } from "../user.service";
 import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
-import { UserRole } from "@common/enum/user_role.enum";
 
 @ApiTags("doctors")
 @Controller("api/v1/doctors")
 export class DoctorController {
     constructor(private readonly usersService: UsersService) {}
+
+    @Get("search")
+    async searchDoctors(
+        @Query("query") query: string,
+        @Query("page") page: number = 1,
+        @Query("limit") limit: number = 10,
+        @Query("sortField") sortField: string = "name",
+        @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
+    ) {
+        return this.usersService.searchDoctors(query, page, limit, sortField, sortOrder);
+    }
 
     @ApiOperation({ summary: "Get all doctors" })
     @ApiResponse({ status: 200, description: "Return all doctors." })

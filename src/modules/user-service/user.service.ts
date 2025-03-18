@@ -14,8 +14,9 @@ export class UsersService {
         @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
         @InjectModel(Doctor.name) private doctorModel: Model<DoctorDocument>,
         @InjectModel(Patient.name) private patientModel: Model<PatientDocument>
-    ) {}
 
+    ) {}
+   
     async findByUsername(username: string): Promise<BaseUser | null> {
         try {
             return await this.baseUserModel.findOne({ username }).lean().exec()
@@ -56,7 +57,31 @@ export class UsersService {
     async getAllDoctors(): Promise<Doctor[]> {
         return await this.doctorModel.find().exec()
     }
+    async searchDoctors(query: string, page: number = 1, limit: number = 10, sortField: string = "name", sortOrder: "asc" | "desc" = "asc") {
+        const filter = query
+            ? {
+                  $or: [
+                      { fullName: { $regex: query, $options: "i" } }, // Tìm theo tên
+                      { id: { $regex: query, $options: "i" } }, // Tìm theo ID bác sĩ
+                      { specialty: { $regex: query, $options: "i" } }, 
+                      { phoneNumber: { $regex: query, $options: "i" } }, // Tìm theo số điện thoại
+                      { email: { $regex: query, $options: "i" } }, // Tìm theo email
+                      { address: { $regex: query, $options: "i" } }, // Tìm theo địa chỉ
+                      { city: { $regex: query, $options: "i" } }, // Tìm theo thành phố
+                  ]
+              }
+            : {};
 
+        const total = await this.doctorModel.countDocuments(filter);
+        const doctors = await this.doctorModel
+            .find(filter)
+            .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 }) // Sắp xếp theo trường được chọn
+            .skip((page - 1) * limit) // Bỏ qua số lượng bản ghi trước đó
+            .limit(limit) // Giới hạn số lượng kết quả trả về
+            .exec();
+        console.log(doctors)
+        return { data: doctors, total, page, limit };
+    }
     async getDoctorById(id: string): Promise<Doctor> {
         const doctor = await this.doctorModel.findById(id).exec()
         if (!doctor) throw new NotFoundException("Doctor not found")
