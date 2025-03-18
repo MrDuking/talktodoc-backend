@@ -1,20 +1,21 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
+import { nanoid } from "nanoid";
 
 export type SpecialityDocument = Speciality & Document;
 
-@Schema({ timestamps: true })
+@Schema()
 export class Speciality {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, unique: true, default: () => `SP${nanoid(6)}` })
+    id!: string;
+
+    @Prop({ required: true })
     name!: string;
 
     @Prop()
     description?: string;
 
-    @Prop({ type: [{ type: String }] })
-    doctors?: string[];
-
-    @Prop({ type: Object, default: {} })
+    @Prop({ type: Object })
     config?: Record<string, any>;
 }
 

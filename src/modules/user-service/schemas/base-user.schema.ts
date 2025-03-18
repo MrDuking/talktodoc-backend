@@ -1,46 +1,65 @@
-import { UserRole } from "@common/enum/user_role.enum"
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
-import { Document } from "mongoose"
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
-export type BaseUserDocument = BaseUser & Document
+export type BaseUserDocument = BaseUser & Document;
 
-@Schema({ discriminatorKey: "role", timestamps: true })
+@Schema({ timestamps: true })
 export class BaseUser {
     @Prop({ required: true, unique: true })
-    username!: string
+    username!: string;
 
     @Prop({ required: true })
-    password!: string
+    password!: string;
 
     @Prop({ required: true, unique: true })
-    email!: string
+    email!: string;
 
     @Prop()
-    fullName!: string
+    fullName!: string;
 
     @Prop({ required: true })
-    phoneNumber!: string
+    phoneNumber!: string;
 
     @Prop()
-    birthDate!: string
+    birthDate!: string;
+
+    @Prop({ default: true })
+    isActive!: boolean;
+
+    @Prop()
+    avatar?: string;
+
+    @Prop({
+        type: Object,
+        required: false,
+        default: null
+    })
+    city?: {
+        name: string;
+        code: number;
+        division_type: string;
+        codename: string;
+        phone_code: number;
+        districts?: any[];
+    };
 }
 
-export const BaseUserSchema = SchemaFactory.createForClass(BaseUser)
+export const BaseUserSchema = SchemaFactory.createForClass(BaseUser);
 
 BaseUserSchema.set("toJSON", {
     virtuals: true,
     versionKey: false,
     transform: (_, ret) => {
-        ret.id = ret._id.toString()
-        return ret
+        ret.id = ret._id.toString();
+        return ret;
     }
-})
+});
 
 BaseUserSchema.set("toObject", {
     virtuals: true,
     versionKey: false,
     transform: (_, ret) => {
-        ret.id = ret._id.toString()
-        return ret
+        ret.id = ret._id.toString();
+        return ret;
     }
-})
+});

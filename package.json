@@ -61,6 +61,7 @@
         "module-alias": "^2.2.3",
         "mongoose": "^8.12.1",
         "mongoose-aggregate-paginate-v2": "^1.1.1",
+        "nanoid": "3.3.10",
         "nest-winston": "^1.9.4",
         "nestjs-grpc-reflection": "^0.0.9",
         "passport": "^0.7.0",

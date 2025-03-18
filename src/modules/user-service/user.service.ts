@@ -6,7 +6,6 @@ import { BaseUser, BaseUserDocument } from "./schemas/base-user.schema"
 import { Doctor, DoctorDocument } from "./schemas/doctor.schema"
 import { Employee, EmployeeDocument } from "./schemas/employee.schema"
 import { Patient, PatientDocument } from "./schemas/patient.schema"
-import { Speciality, SpecialityDocument } from "../speciality_service/schemas/speciality.schema"
 
 @Injectable()
 export class UsersService {
@@ -14,8 +13,7 @@ export class UsersService {
         @InjectModel(BaseUser.name) private baseUserModel: Model<BaseUserDocument>,
         @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
         @InjectModel(Doctor.name) private doctorModel: Model<DoctorDocument>,
-        @InjectModel(Patient.name) private patientModel: Model<PatientDocument>,
-        @InjectModel(Speciality.name) private specialityModel: Model<SpecialityDocument>
+        @InjectModel(Patient.name) private patientModel: Model<PatientDocument>
     ) {}
 
     async findByUsername(username: string): Promise<BaseUser | null> {
@@ -107,5 +105,6 @@ export class UsersService {
         const result = await this.patientModel.findByIdAndDelete(id).exec()
         if (!result) throw new NotFoundException("Patient not found")
     }
+
 
 }

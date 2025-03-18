@@ -1,14 +1,22 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
-import { BaseUser, BaseUserSchema } from "./base-user.schema";
+import { Document, Types } from "mongoose";
+import { BaseUser } from "./base-user.schema";
 import { UserRole } from "@common/enum/user_role.enum";
+import { Speciality } from "@modules/speciality_service/schemas/speciality.schema";
+import { nanoid } from "nanoid";
 
 export type DoctorDocument = Doctor & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Doctor extends BaseUser {
-    @Prop({ type: [String], required: true })
-    specialty!: string[];
+    @Prop({ required: true, unique: true, default: () => `DR${nanoid(6)}` })
+    id!: string;
+
+    @Prop({ default: UserRole.DOCTOR })
+    role!: UserRole;
+
+    @Prop({ type: [{ type: Types.ObjectId, ref: "Speciality" }] })
+    specialty!: Speciality[];
 
     @Prop({ required: true })
     hospitalId!: string;
@@ -19,14 +27,7 @@ export class Doctor extends BaseUser {
     @Prop()
     licenseNo!: string;
 
-    @Prop({
-        type: [
-            {
-                date: { type: String },
-                timeSlots: { type: [String] }
-            }
-        ]
-    })
+    @Prop({ type: [{ date: { type: String }, timeSlots: { type: [String] } }] })
     availability!: Array<{ date: string; timeSlots: string[] }>;
 
     @Prop()
@@ -34,4 +35,3 @@ export class Doctor extends BaseUser {
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor);
-export const DoctorModel = BaseUserSchema.discriminator(UserRole.DOCTOR, DoctorSchema);

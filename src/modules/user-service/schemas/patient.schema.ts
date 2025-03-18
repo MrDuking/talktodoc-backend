@@ -1,12 +1,19 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
-import { BaseUser, BaseUserSchema } from "./base-user.schema";
+import { BaseUser } from "./base-user.schema";
 import { UserRole } from "@common/enum/user_role.enum";
+import { nanoid } from "nanoid";
 
 export type PatientDocument = Patient & Document;
 
 @Schema()
 export class Patient extends BaseUser {
+    @Prop({ required: true, unique: true, default: () => `PT${nanoid(6)}` })
+    id!: string;
+
+    @Prop({ default: UserRole.PATIENT })
+    role!: UserRole;
+
     @Prop({ required: true })
     gender!: string;
 
@@ -47,4 +54,3 @@ export class Patient extends BaseUser {
 }
 
 export const PatientSchema = SchemaFactory.createForClass(Patient);
-export const PatientModel = BaseUserSchema.discriminator(UserRole.PATIENT, PatientSchema);

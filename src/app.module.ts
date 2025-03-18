@@ -5,7 +5,8 @@ import { AuthModule } from "./modules/auth/auth.module"
 import { PharmacyModule } from "./modules/pharmacy_service/pharmacy.module"
 import { UsersModule } from "./modules/user-service/user.module"
 import { SpecialityModule } from "./modules/speciality_service/speciality.module"
-
+import { HospitalModule } from "./modules/hopitals_service/hopital.module";
+    
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
@@ -20,7 +21,8 @@ import { SpecialityModule } from "./modules/speciality_service/speciality.module
         UsersModule,
         AuthModule,
         PharmacyModule,
-        SpecialityModule
+        SpecialityModule,
+        HospitalModule
     ]
 })
 export class AppModule {}

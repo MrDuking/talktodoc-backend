@@ -1,40 +1,52 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto";
-import { Speciality, SpecialityDocument } from "./schemas/speciality.schema";
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common"
+import { InjectModel } from "@nestjs/mongoose"
+import { Model } from "mongoose"
+import { Doctor } from "@modules/user-service/schemas/doctor.schema"
+import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto"
+import { Speciality, SpecialityDocument } from "./schemas/speciality.schema"
 
 @Injectable()
 export class SpecialityService {
-    constructor(@InjectModel(Speciality.name) private specialityModel: Model<SpecialityDocument>) {}
-
+    constructor(
+        @InjectModel(Speciality.name) private specialityModel: Model<SpecialityDocument>,
+        @InjectModel(Doctor.name) private doctorModel: Model<Doctor>
+    ) {}
     async getAllSpecialities(): Promise<Speciality[]> {
-        return await this.specialityModel.find().exec();
+        return await this.specialityModel.find().exec()
     }
-
     async getSpecialityById(id: string): Promise<Speciality> {
         const speciality = await this.specialityModel.findById(id).exec();
         if (!speciality) throw new NotFoundException("Speciality not found");
         return speciality;
     }
-
     async createSpeciality(createSpecialityDto: CreateSpecialityDto): Promise<Speciality> {
         try {
-            const speciality = new this.specialityModel(createSpecialityDto);
-            return await speciality.save();
-        } catch (error) {
-            throw new InternalServerErrorException("Error creating speciality");
+            const existingSpeciality = await this.specialityModel.findOne({ name: createSpecialityDto.name }).exec()
+            if (existingSpeciality) {
+                throw new BadRequestException("Speciality name already exists")
+            }
+            const speciality = new this.specialityModel(createSpecialityDto)
+            return await speciality.save()
+        } catch (error: any) {
+            console.error("Error creating speciality:", error.message)
+            throw new InternalServerErrorException("Error creating speciality")
         }
     }
 
     async updateSpeciality(id: string, updateSpecialityDto: UpdateSpecialityDto): Promise<Speciality> {
-        const updatedSpeciality = await this.specialityModel.findByIdAndUpdate(id, updateSpecialityDto, { new: true }).exec();
-        if (!updatedSpeciality) throw new NotFoundException("Speciality not found");
-        return updatedSpeciality;
-    }
+        const speciality = await this.specialityModel.findById(id).exec()
+        if (!speciality) throw new NotFoundException("Speciality not found")
 
+        const updatedSpeciality = await this.specialityModel.findByIdAndUpdate(id, updateSpecialityDto, { new: true }).exec()
+        return updatedSpeciality!
+    }
     async deleteSpeciality(id: string): Promise<void> {
-        const result = await this.specialityModel.findByIdAndDelete(id).exec();
-        if (!result) throw new NotFoundException("Speciality not found");
+        const doctorUsingSpeciality = await this.doctorModel.findOne({ specialty: id }).exec()
+        if (doctorUsingSpeciality) {
+            throw new BadRequestException("Cannot delete speciality as it is assigned to doctors")
+        }
+
+        const result = await this.specialityModel.findByIdAndDelete(id).exec()
+        if (!result) throw new NotFoundException("Speciality not found")
     }
 }
