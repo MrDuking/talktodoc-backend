@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from "@nestjs/swagger";
+import { Controller, Get, Query, Param, Body, Post, Put, Delete, HttpCode, HttpStatus } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from "@nestjs/swagger";
 import { PharmacyService } from "./pharmacy.service";
 import { CreatePharmacyDto, UpdatePharmacyDto } from "./dtos/pharmacy.dto";
 
@@ -7,6 +7,24 @@ import { CreatePharmacyDto, UpdatePharmacyDto } from "./dtos/pharmacy.dto";
 @Controller("api/v1/pharmacies")
 export class PharmacyController {
     constructor(private readonly pharmacyService: PharmacyService) {}
+
+    @ApiOperation({ summary: "Search pharmacies" })
+    @ApiResponse({ status: 200, description: "Return matching pharmacies with pagination." })
+    @ApiQuery({ name: "query", required: false, description: "Search term" })
+    @ApiQuery({ name: "page", required: false, example: 1 })
+    @ApiQuery({ name: "limit", required: false, example: 10 })
+    @ApiQuery({ name: "sortField", required: false, example: "name" })
+    @ApiQuery({ name: "sortOrder", required: false, example: "asc" })
+    @Get("search")
+    searchPharmacies(
+        @Query("query") query: string ="",
+        @Query("page") page: number = 1,
+        @Query("limit") limit: number = 10,
+        @Query("sortField") sortField: string = "name",
+        @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
+    ) {
+        return this.pharmacyService.searchPharmacies(query, page, limit, sortField, sortOrder);
+    }
 
     @ApiOperation({ summary: "Get all pharmacies" })
     @ApiResponse({ status: 200, description: "Return all pharmacies." })

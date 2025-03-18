@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 
-export type PharmacyDocument = Pharmacy & Document;
-export type PharmacyModel = Model<PharmacyDocument>;
+export type HospitalDocument = Hospital & Document;
+export type HospitalModel = Model<HospitalDocument>;
 
 @Schema({ timestamps: true })
-export class Pharmacy {
+export class Hospital {
     @Prop({ unique: true })
     id!: string;
 
@@ -18,23 +18,27 @@ export class Pharmacy {
     @Prop({ required: true })
     phoneNumber!: string;
 
-    @Prop({ type: [String], default: [] })
-    availableMedicines!: string[];
+    @Prop({ type: [String], required: true, ref: "Speciality" })
+    specialty!: string[];
+
+    @Prop({ default: false })
+    isPublic!: boolean;
 
     @Prop({ default: true })
     isActive!: boolean;
 }
 
-export const PharmacySchema = SchemaFactory.createForClass(Pharmacy);
-PharmacySchema.pre<PharmacyDocument>("save", async function (next) {
+export const HospitalSchema = SchemaFactory.createForClass(Hospital);
+
+HospitalSchema.pre<HospitalDocument>("save", async function (next) {
     if (!this.id) {
         let uniqueId;
         let isUnique = false;
-        const PharmacyModel = this.constructor as PharmacyModel;
+        const HospitalModel = this.constructor as HospitalModel;
 
         while (!isUnique) {
-            uniqueId = `PH${Math.floor(100000 + Math.random() * 900000)}`;
-            const existing = await PharmacyModel.findOne({ id: uniqueId }).exec();
+            uniqueId = `HS${Math.floor(100000 + Math.random() * 900000)}`;
+            const existing = await HospitalModel.findOne({ id: uniqueId }).exec();
             if (!existing) {
                 isUnique = true;
             }

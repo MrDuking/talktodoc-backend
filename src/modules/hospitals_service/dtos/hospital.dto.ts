@@ -17,16 +17,24 @@ export class CreateHospitalDto {
     @IsNotEmpty()
     phoneNumber!: string;
 
-    @ApiProperty({ example: ["Cardiology", "Neurology"], description: "Hospital departments", required: false })
-    @IsOptional()
+    @ApiProperty({
+        example: ["65f7d17d3b2f5c0012e3e7b9", "65f7d18d3b2f5c0012e3e7c0"],
+        description: "List of specialties (IDs of Speciality)",
+        required: true,
+    })
     @IsArray()
     @IsString({ each: true })
-    departments?: string[];
+    specialty!: string[];
 
-    @ApiProperty({ example: true, description: "Is hospital government-owned?", required: false })
+    @ApiProperty({ example: false, description: "Is the hospital public?", required: false })
     @IsOptional()
     @IsBoolean()
-    isGovernmentOwned?: boolean;
+    isPublic?: boolean;
+
+    @ApiProperty({ example: true, description: "Is the hospital active?", required: false })
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
 }
 
 export class UpdateHospitalDto extends PartialType(CreateHospitalDto) {}

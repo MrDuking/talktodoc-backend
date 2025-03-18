@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Model, Types } from "mongoose";
+import { Document, Model } from "mongoose";
 import { BaseUser } from "./base-user.schema";
 import { UserRole } from "@common/enum/user_role.enum";
 
@@ -17,14 +17,15 @@ class Availability {
 
 @Schema({ timestamps: true })
 export class Doctor extends BaseUser {
-    @Prop({ required: true, unique: true })
+    @Prop({ unique: true })
     id!: string;
 
     @Prop({ default: UserRole.DOCTOR })
     role!: UserRole;
 
-    @Prop({ type: [{ type: Types.ObjectId, ref: "Speciality" }], required: true })
-    specialty!: Types.ObjectId[]; // Lưu ID nhưng xài populate bên service rồi nên lôi ra hết nhen thiện
+    @Prop({ type: [String], required: true, ref: "Speciality" })
+    specialty!: string[];
+
     @Prop({ required: true })
     hospitalId!: string;
 
@@ -37,7 +38,7 @@ export class Doctor extends BaseUser {
     @Prop({ type: [Availability], default: [] })
     availability!: Availability[];
 
-    @Prop()
+    @Prop({ type: String, required: true, ref: "DoctorLevel" })
     rank!: string;
 }
 

@@ -71,7 +71,7 @@ export class CreateDoctorDto {
         phone_code: number;
     };
 
-    @ApiProperty({ example: ["605c72c3fc13ae1b3c000001"], description: "List of specialty IDs" })
+    @ApiProperty({ example: ["SP995859"], description: "List of specialty IDs" })
     @IsArray()
     @IsOptional()
     @IsString({ each: true })
@@ -99,7 +99,7 @@ export class CreateDoctorDto {
     @IsOptional()
     availability?: AvailabilityDto[];
 
-    @ApiProperty({ example: "Senior Doctor", description: "Doctor's rank or title" })
+    @ApiProperty({ example: "DL439286", description: "Doctor's rank or title" })
     @IsString()
     @IsOptional()
     rank?: string;

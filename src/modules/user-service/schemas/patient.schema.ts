@@ -37,7 +37,7 @@ class Appointment {
 
 @Schema()
 export class Patient extends BaseUser {
-    @Prop({ unique: true, required: true })
+    @Prop({ required: true })
     id!: string;
 
     @Prop({ default: UserRole.PATIENT })
@@ -67,8 +67,6 @@ export class Patient extends BaseUser {
 }
 
 export const PatientSchema = SchemaFactory.createForClass(Patient);
-
-//  Middleware tạo ID custom và đảm bảo tính duy nhất
 PatientSchema.pre<PatientDocument>("save", async function (next) {
     if (!this.id) {
         let uniqueId;

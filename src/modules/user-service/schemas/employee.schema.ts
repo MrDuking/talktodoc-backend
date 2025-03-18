@@ -8,7 +8,7 @@ export type EmployeeModel = Model<EmployeeDocument>;
 
 @Schema({ timestamps: true })
 export class Employee extends BaseUser {
-    @Prop({ required: true, unique: true })
+    @Prop({  unique: true })
     id!: string;
 
     @Prop({ default: UserRole.EMPLOYEE })

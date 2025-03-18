@@ -6,7 +6,7 @@ export type SpecialityModel = Model<SpecialityDocument>;
 
 @Schema({ timestamps: true })
 export class Speciality {
-    @Prop({ required: true, unique: true })
+    @Prop({unique: true })
     id!: string;
 
     @Prop({ required: true })
@@ -14,6 +14,9 @@ export class Speciality {
 
     @Prop()
     description?: string;
+
+    @Prop({ default: true })
+    isActive!: boolean;
 
     @Prop({ type: Map, of: String, default: {} })
     config?: Record<string, any>;

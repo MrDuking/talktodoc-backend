@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsString, IsNotEmpty, IsArray, IsBoolean } from "class-validator";
+import { IsString, IsNotEmpty, IsArray, IsBoolean, IsOptional } from "class-validator";
 
 export class CreatePharmacyDto {
     @ApiProperty({ example: "Green Pharmacy", description: "Name of the pharmacy" })
@@ -21,9 +21,10 @@ export class CreatePharmacyDto {
     @IsArray()
     availableMedicines?: string[];
 
-    @ApiProperty({ example: true, description: "Is the pharmacy open 24 hours?", required: false })
+    @ApiProperty({ example: true, description: "Is pharmacy active?", required: false })
+    @IsOptional()
     @IsBoolean()
-    is24Hours?: boolean;
+    isActive?: boolean;
 }
 
 export class UpdatePharmacyDto extends PartialType(CreatePharmacyDto) {}
