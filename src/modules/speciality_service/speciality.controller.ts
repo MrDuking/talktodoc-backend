@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { SpecialityService } from "./speciality.service";
-import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common"
+import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger"
+import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto"
+import { SpecialityService } from "./speciality.service"
 
 @ApiTags("specialities")
 @Controller("api/v1/specialities")
@@ -12,7 +12,7 @@ export class SpecialityController {
     @ApiResponse({ status: 200, description: "Return all specialities." })
     @Get()
     getAllSpecialities() {
-        return this.specialityService.getAllSpecialities();
+        return this.specialityService.getAllSpecialities()
     }
 
     @ApiOperation({ summary: "Get speciality by ID" })
@@ -21,7 +21,7 @@ export class SpecialityController {
     @ApiParam({ name: "id", description: "Speciality ID" })
     @Get(":id")
     getSpecialityById(@Param("id") id: string) {
-        return this.specialityService.getSpecialityById(id);
+        return this.specialityService.getSpecialityById(id)
     }
 
     @ApiOperation({ summary: "Create a new speciality" })
@@ -31,7 +31,7 @@ export class SpecialityController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     createSpeciality(@Body() createSpecialityDto: CreateSpecialityDto) {
-        return this.specialityService.createSpeciality(createSpecialityDto);
+        return this.specialityService.createSpeciality(createSpecialityDto)
     }
 
     @ApiOperation({ summary: "Update an existing speciality" })
@@ -41,7 +41,7 @@ export class SpecialityController {
     @ApiBody({ type: UpdateSpecialityDto })
     @Put(":id")
     updateSpeciality(@Param("id") id: string, @Body() updateSpecialityDto: UpdateSpecialityDto) {
-        return this.specialityService.updateSpeciality(id, updateSpecialityDto);
+        return this.specialityService.updateSpeciality(id, updateSpecialityDto)
     }
 
     @ApiOperation({ summary: "Delete a speciality" })
@@ -51,6 +51,6 @@ export class SpecialityController {
     @Delete(":id")
     @HttpCode(HttpStatus.NO_CONTENT)
     deleteSpeciality(@Param("id") id: string) {
-        return this.specialityService.deleteSpeciality(id);
+        return this.specialityService.deleteSpeciality(id)
     }
 }

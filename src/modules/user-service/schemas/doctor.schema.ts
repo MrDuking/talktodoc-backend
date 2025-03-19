@@ -14,9 +14,9 @@ export class Doctor extends BaseUser {
     @Prop({ default: UserRole.DOCTOR })
     role!: UserRole;
 
-    @Prop({ type: [{ type: Types.ObjectId, ref: "Speciality" }] })
-    specialty!: Speciality[];
-
+    @Prop({ type: [{ type: Types.ObjectId, ref: "Speciality" }] }) // ✅ Đúng
+    specialty!: Types.ObjectId[] | Speciality[];
+    
     @Prop({ required: true })
     hospitalId!: string;
 

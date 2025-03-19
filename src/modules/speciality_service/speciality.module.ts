@@ -1,9 +1,9 @@
-import { Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
-import { SpecialityController } from "./speciality.controller";
-import { SpecialityService } from "./speciality.service";
-import { Speciality, SpecialitySchema } from "./schemas/speciality.schema";
-import { Doctor, DoctorSchema } from "@modules/user-service/schemas/doctor.schema";
+import { Doctor, DoctorSchema } from "@modules/user-service/schemas/doctor.schema"
+import { Module } from "@nestjs/common"
+import { MongooseModule } from "@nestjs/mongoose"
+import { Speciality, SpecialitySchema } from "./schemas/speciality.schema"
+import { SpecialityController } from "./speciality.controller"
+import { SpecialityService } from "./speciality.service"
 @Module({
     imports: [
         MongooseModule.forFeature([

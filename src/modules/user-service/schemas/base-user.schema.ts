@@ -27,7 +27,7 @@ export class BaseUser {
     isActive!: boolean;
 
     @Prop()
-    avatar?: string;
+    avatarUrl?: string;
 
     @Prop({
         type: Object,

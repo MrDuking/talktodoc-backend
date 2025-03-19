@@ -15,6 +15,9 @@ export class Pharmacy {
     @Prop({ required: true })
     address!: string;
 
+    @Prop({ required: true, default: "N/A" })
+    city!: string;
+
     @Prop({ required: true })
     phoneNumber!: string;
 

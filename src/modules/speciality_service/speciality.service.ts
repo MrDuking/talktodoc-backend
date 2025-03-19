@@ -1,7 +1,7 @@
+import { Doctor } from "@modules/user-service/schemas/doctor.schema"
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common"
 import { InjectModel } from "@nestjs/mongoose"
 import { Model } from "mongoose"
-import { Doctor } from "@modules/user-service/schemas/doctor.schema"
 import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto"
 import { Speciality, SpecialityDocument } from "./schemas/speciality.schema"
 
@@ -15,9 +15,9 @@ export class SpecialityService {
         return await this.specialityModel.find().exec()
     }
     async getSpecialityById(id: string): Promise<Speciality> {
-        const speciality = await this.specialityModel.findById(id).exec();
-        if (!speciality) throw new NotFoundException("Speciality not found");
-        return speciality;
+        const speciality = await this.specialityModel.findById(id).exec()
+        if (!speciality) throw new NotFoundException("Speciality not found")
+        return speciality
     }
     async createSpeciality(createSpecialityDto: CreateSpecialityDto): Promise<Speciality> {
         try {

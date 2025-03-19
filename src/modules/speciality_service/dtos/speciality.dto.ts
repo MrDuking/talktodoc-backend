@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, IsObject } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, IsObject, IsBoolean } from "class-validator";
 
 export class CreateSpecialityDto {
     @ApiProperty({ example: "Cardiology", description: "Name of the specialty" })
@@ -20,6 +20,11 @@ export class CreateSpecialityDto {
     @IsOptional()
     @IsObject()
     config?: Record<string, any>;
+
+    @ApiProperty()
+    @IsOptional()
+    @IsBoolean()
+    active?: boolean;
 }
 
 export class UpdateSpecialityDto extends PartialType(CreateSpecialityDto) {}
