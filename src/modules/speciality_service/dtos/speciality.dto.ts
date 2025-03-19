@@ -12,6 +12,11 @@ export class CreateSpecialityDto {
     @IsString()
     description?: string;
 
+    @ApiProperty({ example: true, description: "Is speciality active?", required: false })
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
+
     @ApiProperty({
         example: { requiresAppointment: true, hasEmergencySupport: false },
         description: "Configuration settings for the specialty",

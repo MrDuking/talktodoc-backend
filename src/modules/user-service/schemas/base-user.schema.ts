@@ -3,6 +3,26 @@ import { Document } from "mongoose";
 
 export type BaseUserDocument = BaseUser & Document;
 
+class City {
+    @Prop({ required: true })
+    name!: string;
+
+    @Prop({ required: true })
+    code!: number;
+
+    @Prop({ required: true })
+    division_type!: string;
+
+    @Prop({ required: true })
+    codename!: string;
+
+    @Prop({ required: true })
+    phone_code!: number;
+
+    @Prop({ type: [Object], default: [] })
+    districts?: any[];
+}
+
 @Schema({ timestamps: true })
 export class BaseUser {
     @Prop({ required: true, unique: true })
@@ -20,8 +40,8 @@ export class BaseUser {
     @Prop({ required: true })
     phoneNumber!: string;
 
-    @Prop()
-    birthDate!: string;
+    @Prop({ type: Date })
+    birthDate!: Date;
 
     @Prop({ default: true })
     isActive!: boolean;
@@ -29,19 +49,8 @@ export class BaseUser {
     @Prop()
     avatarUrl?: string;
 
-    @Prop({
-        type: Object,
-        required: false,
-        default: null
-    })
-    city?: {
-        name: string;
-        code: number;
-        division_type: string;
-        codename: string;
-        phone_code: number;
-        districts?: any[];
-    };
+    @Prop({ type: City, default: null })
+    city?: City;
 }
 
 export const BaseUserSchema = SchemaFactory.createForClass(BaseUser);

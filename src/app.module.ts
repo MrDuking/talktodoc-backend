@@ -5,8 +5,10 @@ import { AuthModule } from "./modules/auth/auth.module"
 import { PharmacyModule } from "./modules/pharmacy_service/pharmacy.module"
 import { UsersModule } from "./modules/user-service/user.module"
 import { SpecialityModule } from "./modules/speciality_service/speciality.module"
-import { HospitalModule } from "./modules/hopitals_service/hopital.module";
-    
+import { HospitalModule } from "./modules/hospitals_service/hospital.module";
+import { DoctorLevelModule } from "./modules/doctor_levels_service/doctor-level.module"
+import { MedicineModule } from "./modules/medicines_service/medicines.module"
+
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
@@ -22,6 +24,8 @@ import { HospitalModule } from "./modules/hopitals_service/hopital.module";
         AuthModule,
         PharmacyModule,
         SpecialityModule,
+        DoctorLevelModule,
+        MedicineModule,
         HospitalModule
     ]
 })

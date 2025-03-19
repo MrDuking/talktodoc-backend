@@ -1,12 +1,30 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common"
-import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger"
-import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto"
-import { SpecialityService } from "./speciality.service"
+import { Controller, Get, Query, Param, Body, Post, Put, Delete, HttpCode, HttpStatus } from "@nestjs/common";
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { SpecialityService } from "./speciality.service";
+import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto";
 
 @ApiTags("specialities")
 @Controller("api/v1/specialities")
 export class SpecialityController {
     constructor(private readonly specialityService: SpecialityService) {}
+
+    @ApiOperation({ summary: "Search specialities" })
+    @ApiResponse({ status: 200, description: "Return matching specialities with pagination." })
+    @ApiQuery({ name: "query", required: false, description: "Search term" })
+    @ApiQuery({ name: "page", required: false, example: 1 })
+    @ApiQuery({ name: "limit", required: false, example: 10 })
+    @ApiQuery({ name: "sortField", required: false, example: "name" })
+    @ApiQuery({ name: "sortOrder", required: false, example: "asc" })
+    @Get("search")
+    searchSpecialities(
+        @Query("query") query: string = "",
+        @Query("page") page: number = 1,
+        @Query("limit") limit: number = 10,
+        @Query("sortField") sortField: string = "name",
+        @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
+    ) {
+        return this.specialityService.searchSpecialities(query, page, limit, sortField, sortOrder);
+    }
 
     @ApiOperation({ summary: "Get all specialities" })
     @ApiResponse({ status: 200, description: "Return all specialities." })
