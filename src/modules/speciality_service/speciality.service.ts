@@ -64,7 +64,7 @@ export class SpecialityService {
         const speciality = await this.specialityModel.findOne({ id }).exec()
         if (!speciality) throw new NotFoundException("Speciality not found")
 
-        const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ id }, updateSpecialityDto, { new: true }).exec()
+        const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ _id:id }, updateSpecialityDto, { new: true }).exec()
         return updatedSpeciality!
     }
 

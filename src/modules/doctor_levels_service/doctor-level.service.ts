@@ -33,14 +33,14 @@ export class DoctorLevelService {
     }
 
     async updateDoctorLevel(id: string, updateDoctorLevelDto: UpdateDoctorLevelDto): Promise<DoctorLevel> {
-        const updatedLevel = await this.doctorLevelModel.findOneAndUpdate({ id }, updateDoctorLevelDto, { new: true }).exec()
+        const updatedLevel = await this.doctorLevelModel.findOneAndUpdate({ _id:id }, updateDoctorLevelDto, { new: true }).exec()
 
         if (!updatedLevel) throw new NotFoundException("Doctor level not found")
         return updatedLevel
     }
 
     async deleteDoctorLevel(id: string): Promise<void> {
-        const result = await this.doctorLevelModel.findOneAndDelete({ id }).exec()
+        const result = await this.doctorLevelModel.findOneAndDelete({ _id:id }).exec()
         if (!result) throw new NotFoundException("Doctor level not found")
     }
 

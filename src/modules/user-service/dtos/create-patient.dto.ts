@@ -126,12 +126,6 @@ export class CreatePatientDto {
     @Type(() => AppointmentDto)
     @IsOptional()
     appointments?: AppointmentDto[] = [];
-
-    @ApiProperty({ type: EmergencyContactDto, description: "Emergency contact details" })
-    @ValidateNested()
-    @Type(() => EmergencyContactDto)
-    @IsNotEmpty()
-    emergencyContact!: EmergencyContactDto;
 }
 
 export class UpdatePatientDto extends PartialType(CreatePatientDto) {}

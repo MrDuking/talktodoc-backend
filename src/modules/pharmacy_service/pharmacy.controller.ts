@@ -59,7 +59,10 @@ export class PharmacyController {
     @ApiBody({ type: UpdatePharmacyDto })
     @Put(":id")
     updatePharmacy(@Param("id") id: string, @Body() updatePharmacyDto: UpdatePharmacyDto) {
+        console.log(updatePharmacyDto);
+        console.log(id);
         return this.pharmacyService.updatePharmacy(id, updatePharmacyDto);
+        
     }
 
     @ApiOperation({ summary: "Delete a pharmacy" })

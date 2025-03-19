@@ -72,13 +72,13 @@ export class HospitalService {
 
 
     async updateHospital(id: string, updateHospitalDto: UpdateHospitalDto): Promise<Hospital> {
-        const updatedHospital = await this.hospitalModel.findOneAndUpdate({ id }, updateHospitalDto, { new: true }).exec();
+        const updatedHospital = await this.hospitalModel.findOneAndUpdate({ _id:id }, updateHospitalDto, { new: true }).exec();
         if (!updatedHospital) throw new NotFoundException("Hospital not found");
         return updatedHospital;
     }
 
     async deleteHospital(id: string): Promise<void> {
-        const result = await this.hospitalModel.findOneAndDelete({ id }).exec();
+        const result = await this.hospitalModel.findOneAndDelete({ _id:id }).exec();
         if (!result) throw new NotFoundException("Hospital not found");
     }
 }

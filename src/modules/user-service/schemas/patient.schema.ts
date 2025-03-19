@@ -61,7 +61,7 @@ export class Patient extends BaseUser {
             relationship: { type: String, required: true },
             phoneNumber: { type: String, required: true }
         },
-        required: true
+        required: false
     })
     emergencyContact!: { name: string; relationship: string; phoneNumber: string };
 }

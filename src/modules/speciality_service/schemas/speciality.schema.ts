@@ -15,9 +15,6 @@ export class Speciality {
     @Prop()
     description?: string
 
-    @Prop({ required: true, default: true })
-    active!: boolean
-
     @Prop({ default: true })
     isActive!: boolean;
 

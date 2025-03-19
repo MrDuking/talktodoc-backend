@@ -20,12 +20,12 @@ export class CreateEmployeeDto {
     @ApiProperty({ example: "HR", description: "Department of the employee" })
     @IsString()
     @IsNotEmpty()
-    department!: string;
+    department?: string;
 
     @ApiProperty({ example: "2023-05-15", description: "Start date of the employee (YYYY-MM-DD)" })
     @IsDateString()
     @IsNotEmpty()
-    startDate!: string;
+    startDate?: string;
 
     @ApiProperty({ example: "094333346", description: "Employee's phone number" })
     @IsString()

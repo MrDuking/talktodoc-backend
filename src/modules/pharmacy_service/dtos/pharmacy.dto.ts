@@ -28,7 +28,7 @@ export class CreatePharmacyDto {
 
     @ApiProperty({ example: true, description: "Is the active the pharmacy?", required: false })
     @IsBoolean()
-    active?: boolean
+    isActive?: boolean
 
     @ApiProperty({ example: true, description: "Is the pharmacy open 24 hours?", required: false })
     @IsBoolean()

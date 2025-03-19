@@ -26,10 +26,6 @@ export class CreateSpecialityDto {
     @IsObject()
     config?: Record<string, any>;
 
-    @ApiProperty()
-    @IsOptional()
-    @IsBoolean()
-    active?: boolean;
 }
 
 export class UpdateSpecialityDto extends PartialType(CreateSpecialityDto) {}

@@ -17,10 +17,10 @@ export class Employee extends BaseUser {
     @Prop({ required: true })
     position!: string;
 
-    @Prop({ required: true })
-    department!: string;
+    @Prop({ required: false })
+    department?: string;
 
-    @Prop({ type: Date, required: true })
+    @Prop({ type: Date, required: false })
     startDate!: Date;
 
     @Prop({ default: 0 })

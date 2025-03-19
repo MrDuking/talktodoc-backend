@@ -42,7 +42,7 @@ export class UsersService {
     }
 
     async updateEmployee(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
-        const updatedEmployee = await this.employeeModel.findOneAndUpdate({ id }, updateEmployeeDto, { new: true }).exec()
+        const updatedEmployee = await this.employeeModel.findOneAndUpdate({ _id:id }, updateEmployeeDto, { new: true }).exec()
         if (!updatedEmployee) throw new NotFoundException("Employee not found")
         return updatedEmployee
     }
@@ -105,7 +105,7 @@ export class UsersService {
 
     async updateDoctor(id: string, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {
         const updatedDoctor = await this.doctorModel
-            .findOneAndUpdate({ id }, updateDoctorDto, { new: true })
+            .findOneAndUpdate({ _id:id }, updateDoctorDto, { new: true })
             .populate([{ path: "specialty" }, { path: "rank" }])
             .exec()
 
@@ -114,7 +114,7 @@ export class UsersService {
     }
 
     async deleteDoctor(id: string): Promise<void> {
-        const result = await this.doctorModel.findOneAndDelete({ id }).exec()
+        const result = await this.doctorModel.findOneAndDelete({ _id:id }).exec()
         if (!result) throw new NotFoundException("Doctor not found")
     }
 
@@ -135,45 +135,16 @@ export class UsersService {
     }
 
     async updatePatient(id: string, updatePatientDto: UpdatePatientDto): Promise<Patient> {
-        const updatedPatient = await this.patientModel.findOneAndUpdate({ id }, updatePatientDto, { new: true }).exec()
+        const updatedPatient = await this.patientModel.findOneAndUpdate({ _id:id }, updatePatientDto, { new: true }).exec()
         if (!updatedPatient) throw new NotFoundException("Patient not found")
         return updatedPatient
     }
 
     async deletePatient(id: string): Promise<void> {
-        const result = await this.patientModel.findOneAndDelete({ id }).exec()
+        const result = await this.patientModel.findOneAndDelete({ _id:id }).exec()
         if (!result) throw new NotFoundException("Patient not found")
     }
     // ===================== Search =====================
-    async searchDoctors(query: string, page: number = 1, limit: number = 10, sortField: string = "name", sortOrder: "asc" | "desc" = "asc") {
-        const filter: any = {}
-
-        if (query) {
-            filter.$or = [
-                { id: { $regex: query, $options: "i" } },
-                { name: { $regex: query, $options: "i" } },
-                { specialty: { $in: [new RegExp(query, "i")] } },
-                { hospitalId: { $regex: query, $options: "i" } },
-                { rank: { $regex: query, $options: "i" } },
-                { fullName: { $regex: query, $options: "i" } },
-                { email: { $regex: query, $options: "i" } },
-                { phoneNumber: { $regex: query, $options: "i" } }
-            ]
-        }
-
-        console.log("MongoDB Query:", JSON.stringify(filter, null, 2))
-
-        const total = await this.doctorModel.countDocuments(filter)
-        const doctors = await this.doctorModel
-            .find(filter)
-            .skip((page - 1) * limit)
-            .limit(limit)
-            .sort({ [sortField]: sortOrder })
-            .lean()
-            .exec()
-
-        return { data: doctors, total, page, limit }
-    }
 
     async searchEmployees(query: string, page: number = 1, limit: number = 10, sortField: string = "name", sortOrder: "asc" | "desc" = "asc") {
         const filter: any = {}
