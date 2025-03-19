@@ -37,7 +37,7 @@ class Appointment {
 
 @Schema()
 export class Patient extends BaseUser {
-    @Prop({ required: true })
+    @Prop({ unique: true  })
     id!: string;
 
     @Prop({ default: UserRole.PATIENT })
@@ -45,9 +45,6 @@ export class Patient extends BaseUser {
 
     @Prop({ type: String, enum: Object.values(Gender), required: true })
     gender!: Gender;
-
-    @Prop({ required: true })
-    address!: string;
 
     @Prop({ type: [MedicalHistory], default: [] })
     medicalHistory!: MedicalHistory[];
