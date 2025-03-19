@@ -1,56 +1,59 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Model } from "mongoose";
-import { BaseUser } from "./base-user.schema";
-import { UserRole } from "@common/enum/user_role.enum";
+import { UserRole } from "@common/enum/user_role.enum"
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
+import { Document, Model } from "mongoose"
+import { BaseUser } from "./base-user.schema"
 
-export type PatientDocument = Patient & Document;
+export type PatientDocument = Patient & Document
 
 enum Gender {
     MALE = "male",
     FEMALE = "female",
-    OTHER = "other",
+    OTHER = "other"
 }
 
 @Schema()
 class MedicalHistory {
     @Prop({ required: true })
-    condition!: string;
+    condition!: string
 
     @Prop({ type: Date, required: true })
-    diagnosisDate!: Date;
+    diagnosisDate!: Date
 
     @Prop({ required: true })
-    treatment!: string;
+    treatment!: string
 }
 
 @Schema()
 class Appointment {
     @Prop({ required: true })
-    doctorId!: string;
+    doctorId!: string
 
     @Prop({ type: Date, required: true })
-    date!: Date;
+    date!: Date
 
     @Prop({ type: String, enum: ["pending", "confirmed", "cancelled"], default: "pending" })
-    status!: string;
+    status!: string
 }
 
 @Schema()
 export class Patient extends BaseUser {
-    @Prop({ unique: true  })
-    id!: string;
+    @Prop({ unique: true })
+    id!: string
 
     @Prop({ default: UserRole.PATIENT })
-    role!: UserRole;
+    role!: UserRole
 
     @Prop({ type: String, enum: Object.values(Gender), required: true })
-    gender!: Gender;
+    gender!: Gender
 
     @Prop({ type: [MedicalHistory], default: [] })
-    medicalHistory!: MedicalHistory[];
+    medicalHistory!: MedicalHistory[]
+
+    @Prop({ type: String, required: true, default: "unknown" })
+    address!: string
 
     @Prop({ type: [Appointment], default: [] })
-    appointments!: Appointment[];
+    appointments!: Appointment[]
 
     @Prop({
         type: {
@@ -60,25 +63,25 @@ export class Patient extends BaseUser {
         },
         required: false
     })
-    emergencyContact!: { name: string; relationship: string; phoneNumber: string };
+    emergencyContact!: { name: string; relationship: string; phoneNumber: string }
 }
 
-export const PatientSchema = SchemaFactory.createForClass(Patient);
+export const PatientSchema = SchemaFactory.createForClass(Patient)
 PatientSchema.pre<PatientDocument>("save", async function (next) {
     if (!this.id) {
-        let uniqueId;
-        let isUnique = false;
-        const PatientModel = this.constructor as Model<PatientDocument>;
+        let uniqueId
+        let isUnique = false
+        const PatientModel = this.constructor as Model<PatientDocument>
 
         while (!isUnique) {
-            uniqueId = `PT${Math.floor(100000 + Math.random() * 900000)}`;
-            const existing = await PatientModel.findOne({ id: uniqueId });
+            uniqueId = `PT${Math.floor(100000 + Math.random() * 900000)}`
+            const existing = await PatientModel.findOne({ id: uniqueId })
             if (!existing) {
-                isUnique = true;
+                isUnique = true
             }
         }
 
-        this.id = uniqueId;
+        this.id = uniqueId
     }
-    next();
-});
+    next()
+})

@@ -61,20 +61,22 @@ export class SpecialityService {
     }
 
     async updateSpeciality(id: string, updateSpecialityDto: UpdateSpecialityDto): Promise<Speciality> {
-        const speciality = await this.specialityModel.findOne({ id }).exec()
+        const speciality = await this.specialityModel.findOne({ _id: id }).exec()
         if (!speciality) throw new NotFoundException("Speciality not found")
 
-        const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ _id:id }, updateSpecialityDto, { new: true }).exec()
+        const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ _id: id }, updateSpecialityDto, { new: true }).exec()
+        console.log("updatedSpeciality", updatedSpeciality)
+        if (!updatedSpeciality) throw new InternalServerErrorException("Error updating speciality")
         return updatedSpeciality!
     }
 
     async deleteSpeciality(id: string): Promise<void> {
-        const doctorUsingSpeciality = await this.doctorModel.findOne({ specialty: id }).exec()
+        const doctorUsingSpeciality = await this.doctorModel.findOne({ _id: id }).exec()
         if (doctorUsingSpeciality) {
             throw new BadRequestException("Cannot delete speciality as it is assigned to doctors")
         }
 
-        const result = await this.specialityModel.findOneAndDelete({ id }).exec()
+        const result = await this.specialityModel.findOneAndDelete({ _id: id }).exec()
         if (!result) throw new NotFoundException("Speciality not found")
     }
 }

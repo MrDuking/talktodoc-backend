@@ -57,15 +57,15 @@ export class PharmacyService {
     }
 
     async updatePharmacy(id: string, updatePharmacyDto: UpdatePharmacyDto): Promise<Pharmacy> {
-        console.log('updatePharmacyDto', updatePharmacyDto)
-        console.log('id', id)
-        const updatedPharmacy = await this.pharmacyModel.findOneAndUpdate({ _id:id }, updatePharmacyDto, { new: true }).exec()
+        console.log("updatePharmacyDto", updatePharmacyDto)
+        console.log("id", id)
+        const updatedPharmacy = await this.pharmacyModel.findOneAndUpdate({ _id: id }, updatePharmacyDto, { new: true }).exec()
         if (!updatedPharmacy) throw new NotFoundException("Pharmacy not found")
         return updatedPharmacy
     }
 
     async deletePharmacy(id: string): Promise<void> {
-        const result = await this.pharmacyModel.findOneAndDelete({ id }).exec()
+        const result = await this.pharmacyModel.findOneAndDelete({ _id: id }).exec()
         if (!result) throw new NotFoundException("Pharmacy not found")
     }
 }
