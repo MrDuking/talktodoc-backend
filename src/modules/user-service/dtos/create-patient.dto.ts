@@ -97,10 +97,19 @@ export class CreatePatientDto {
     @Matches(/^[0-9]{10,11}$/, { message: "Phone number must be 10-11 digits long" })
     phoneNumber!: string;
 
-    @ApiProperty({ example: "123 Main St, City, Country", description: "Patient's address" })
-    @IsString()
-    @IsNotEmpty()
-    address!: string;
+    @ApiProperty({
+        example: { name: "Hanoi", code: 1, division_type: "City", codename: "hanoi", phone_code: 24 },
+        description: "City where patient is located",
+        required: false,
+    })
+    @IsOptional()
+    city?: {
+        name: string;
+        code: number;
+        division_type: string;
+        codename: string;
+        phone_code: number;
+    };
 
     @ApiProperty({ example: "true", description: "Account active status" })
     @IsBoolean()
