@@ -158,7 +158,7 @@ export class UsersService {
     }
 
     async updatePatient(id: string, updatePatientDto: UpdatePatientDto): Promise<Patient> {
-        const updatedPatient = await this.patientModel.findOneAndUpdate({ _id: id }, updatePatientDto, { new: true }).exec()
+        const updatedPatient = await this.patientModel.findOneAndUpdate({ id }, updatePatientDto, { new: true }).exec()
 
         if (!updatedPatient) throw new NotFoundException("Patient not found")
         return updatedPatient

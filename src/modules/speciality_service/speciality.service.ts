@@ -63,7 +63,6 @@ export class SpecialityService {
     async updateSpeciality(id: string, updateSpecialityDto: UpdateSpecialityDto): Promise<Speciality> {
         const speciality = await this.specialityModel.findOne({ _id: id }).exec()
         if (!speciality) throw new NotFoundException("Speciality not found")
-
         const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ _id: id }, updateSpecialityDto, { new: true }).exec()
         console.log("updatedSpeciality", updatedSpeciality)
         if (!updatedSpeciality) throw new InternalServerErrorException("Error updating speciality")

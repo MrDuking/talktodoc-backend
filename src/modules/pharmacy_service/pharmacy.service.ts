@@ -57,9 +57,9 @@ export class PharmacyService {
     }
 
     async updatePharmacy(id: string, updatePharmacyDto: UpdatePharmacyDto): Promise<Pharmacy> {
-        console.log("updatePharmacyDto", updatePharmacyDto)
-        console.log("id", id)
         const updatedPharmacy = await this.pharmacyModel.findOneAndUpdate({ _id: id }, updatePharmacyDto, { new: true }).exec()
+        console.log("updatedPharmacy", updatedPharmacy)
+        console.log("id check", id)
         if (!updatedPharmacy) throw new NotFoundException("Pharmacy not found")
         return updatedPharmacy
     }
