@@ -59,9 +59,11 @@ export class HospitalService {
     }
 
     async updateHospital(id: string, updateHospitalDto: UpdateHospitalDto): Promise<Hospital> {
+        const hospital = await this.hospitalModel.findOne({ _id: id }).exec()
+        if (!hospital) throw new NotFoundException("Speciality not found")
         const updatedHospital = await this.hospitalModel.findOneAndUpdate({ _id: id }, updateHospitalDto, { new: true }).exec()
-        if (!updatedHospital) throw new NotFoundException("Hospital not found")
-        return updatedHospital
+        if (!updatedHospital) throw new InternalServerErrorException("Error updating speciality")
+        return updatedHospital!
     }
 
     async deleteHospital(id: string): Promise<void> {

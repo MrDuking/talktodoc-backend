@@ -43,7 +43,7 @@ export class Patient extends BaseUser {
     @Prop({ default: UserRole.PATIENT })
     role!: UserRole
 
-    @Prop({ type: String, enum: Object.values(Gender), required: true })
+    @Prop({ type: String, required: true })
     gender!: Gender
 
     @Prop({ type: [MedicalHistory], default: [] })
