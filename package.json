@@ -54,6 +54,7 @@
         "class-validator": "^0.14.1",
         "cloudinary": "^2.2.0",
         "cookie-parser": "^1.4.6",
+        "csv-parser": "^3.2.0",
         "dayjs": "^1.11.10",
         "dotenv": "^16.4.7",
         "dynamoose": "^4.0.0",

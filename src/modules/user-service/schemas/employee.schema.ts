@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Model } from "mongoose";
+import { Document, Model, Types } from "mongoose";
 import { BaseUser } from "./base-user.schema";
 import { UserRole } from "@common/enum/user_role.enum";
 
@@ -19,6 +19,9 @@ export class Employee extends BaseUser {
 
     @Prop({ required: false })
     department?: string;
+
+    @Prop({ type: [Types.ObjectId], required: true, ref: "Speciality" })
+    specialty!: Types.ObjectId[]
 
     @Prop({ type: Date, required: false })
     startDate!: Date;

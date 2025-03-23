@@ -1,6 +1,6 @@
 import { UserRole } from "@common/enum/user_role.enum"
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
-import { Document, Model } from "mongoose"
+import { Document, Model, Types } from "mongoose"
 import { BaseUser } from "./base-user.schema"
 
 export type DoctorDocument = Doctor & Document
@@ -18,16 +18,16 @@ class Availability {
 @Schema({ timestamps: true })
 export class Doctor extends BaseUser {
     @Prop({ unique: true })
-    id!: string
+    id!: string 
 
     @Prop({ default: UserRole.DOCTOR })
     role!: UserRole
 
-    @Prop({ type: [String], required: true, ref: "Speciality" })
-    specialty!: string[]
+    @Prop({ type: [Types.ObjectId], required: true, ref: "Speciality" })
+    specialty!: Types.ObjectId[]
 
-    @Prop({ required: true })
-    hospitalId!: string
+    @Prop({ type: Types.ObjectId, required: true, ref: "Hospital" })
+    hospital!: Types.ObjectId
 
     @Prop({ default: 0 })
     experienceYears!: number
@@ -38,8 +38,8 @@ export class Doctor extends BaseUser {
     @Prop({ type: [Availability], default: [] })
     availability!: Availability[]
 
-    @Prop({ type: String, required: true, ref: "DoctorLevel" })
-    rank!: string
+    @Prop({ type: Types.ObjectId, required: true, ref: "DoctorLevel" })
+    rank!: Types.ObjectId
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)
@@ -59,32 +59,6 @@ DoctorSchema.pre<DoctorDocument>("save", async function (next) {
         }
 
         this.id = uniqueId
-    }
-    next()
-})
-
-// Hàm tạo ID theo định dạng DR-xxxxxx (6 chữ số)
-const generateDoctorID = (): string => {
-    const randomNumber = Math.floor(100000 + Math.random() * 900000) // Random số từ 100000 đến 999999
-    return `DR-${randomNumber}`
-}
-
-// Middleware: Gán ID trước khi lưu vào database
-DoctorSchema.pre<DoctorDocument>("save", async function (next) {
-    if (!this.id) {
-        let newId
-        let isUnique = false
-
-        // Kiểm tra ID có trùng lặp trong database không
-        while (!isUnique) {
-            newId = generateDoctorID()
-            const existingDoctor = await this.model("Doctor").findOne({ id: newId })
-            if (!existingDoctor) {
-                isUnique = true
-            }
-        }
-
-        this.id = newId
     }
     next()
 })

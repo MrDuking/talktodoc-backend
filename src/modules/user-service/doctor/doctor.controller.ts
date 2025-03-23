@@ -26,18 +26,17 @@ export class DoctorController {
         return this.usersService.getAllDoctors();
     }
 
-    @ApiOperation({ summary: "Get a doctor by ID" })
+    @ApiOperation({ summary: "Get a doctor by MongoDB _id" })
     @ApiResponse({ status: 200, description: "Return a doctor." })
     @ApiResponse({ status: 404, description: "Doctor not found." })
-    @ApiParam({ name: "id", description: "Doctor ID" })
-    @Get(":id")
-    findDoctorById(@Param("id") id: string) {
+    @ApiParam({ name: "_id", description: "Doctor MongoDB _id" })
+    @Get(":_id")
+    findDoctorById(@Param("_id") id: string) {
         return this.usersService.getDoctorById(id);
     }
 
     @ApiOperation({ summary: "Create a new doctor" })
     @ApiResponse({ status: 201, description: "Doctor created successfully." })
-    @ApiResponse({ status: 400, description: "Bad Request." })
     @ApiBody({ type: CreateDoctorDto })
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -45,23 +44,21 @@ export class DoctorController {
         return this.usersService.createDoctor(createDoctorDto);
     }
 
-    @ApiOperation({ summary: "Update an existing doctor" })
+    @ApiOperation({ summary: "Update an existing doctor by _id" })
     @ApiResponse({ status: 200, description: "Doctor updated successfully." })
-    @ApiResponse({ status: 404, description: "Doctor not found." })
-    @ApiParam({ name: "id", description: "Doctor ID" })
+    @ApiParam({ name: "_id", description: "Doctor MongoDB _id" })
     @ApiBody({ type: UpdateDoctorDto })
-    @Put(":id")
-    updateDoctor(@Param("id") id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
+    @Put(":_id")
+    updateDoctor(@Param("_id") id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
         return this.usersService.updateDoctor(id, updateDoctorDto);
     }
 
-    @ApiOperation({ summary: "Delete a doctor" })
+    @ApiOperation({ summary: "Delete a doctor by _id" })
     @ApiResponse({ status: 204, description: "Doctor deleted successfully." })
-    @ApiResponse({ status: 404, description: "Doctor not found." })
-    @ApiParam({ name: "id", description: "Doctor ID" })
-    @Delete(":id")
+    @ApiParam({ name: "_id", description: "Doctor MongoDB _id" })
+    @Delete(":_id")
     @HttpCode(HttpStatus.NO_CONTENT)
-    deleteDoctor(@Param("id") id: string) {
+    deleteDoctor(@Param("_id") id: string) {
         return this.usersService.deleteDoctor(id);
     }
 }

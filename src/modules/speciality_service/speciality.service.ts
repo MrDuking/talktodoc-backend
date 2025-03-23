@@ -1,7 +1,7 @@
 import { Doctor } from "@modules/user-service/schemas/doctor.schema"
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common"
 import { InjectModel } from "@nestjs/mongoose"
-import { Model } from "mongoose"
+import { isValidObjectId, Model, Types } from "mongoose"
 import { CreateSpecialityDto, UpdateSpecialityDto } from "./dtos/speciality.dto"
 import { Speciality, SpecialityDocument } from "./schemas/speciality.schema"
 
@@ -17,7 +17,9 @@ export class SpecialityService {
     }
 
     async getSpecialityById(id: string): Promise<Speciality> {
-        const speciality = await this.specialityModel.findOne({ id }).exec()
+        if (!isValidObjectId(id)) throw new BadRequestException("Invalid speciality ID")
+
+        const speciality = await this.specialityModel.findById(id).exec()
         if (!speciality) throw new NotFoundException("Speciality not found")
         return speciality
     }
@@ -48,8 +50,8 @@ export class SpecialityService {
 
     async createSpeciality(createSpecialityDto: CreateSpecialityDto): Promise<Speciality> {
         try {
-            const existingSpeciality = await this.specialityModel.findOne({ name: createSpecialityDto.name }).exec()
-            if (existingSpeciality) {
+            const existing = await this.specialityModel.findOne({ name: createSpecialityDto.name }).exec()
+            if (existing) {
                 throw new BadRequestException("Speciality name already exists")
             }
             const speciality = new this.specialityModel(createSpecialityDto)
@@ -61,22 +63,22 @@ export class SpecialityService {
     }
 
     async updateSpeciality(id: string, updateSpecialityDto: UpdateSpecialityDto): Promise<Speciality> {
-        const speciality = await this.specialityModel.findOne({ _id: id }).exec()
-        if (!speciality) throw new NotFoundException("Speciality not found")
+        if (!isValidObjectId(id)) throw new BadRequestException("Invalid speciality ID")
 
-        const updatedSpeciality = await this.specialityModel.findOneAndUpdate({ _id: id }, updateSpecialityDto, { new: true }).exec()
-        console.log("updatedSpeciality", updatedSpeciality)
-        if (!updatedSpeciality) throw new InternalServerErrorException("Error updating speciality")
-        return updatedSpeciality!
+        const updated = await this.specialityModel.findByIdAndUpdate(id, updateSpecialityDto, { new: true }).exec()
+        if (!updated) throw new NotFoundException("Speciality not found")
+        return updated
     }
 
     async deleteSpeciality(id: string): Promise<void> {
-        const doctorUsingSpeciality = await this.doctorModel.findOne({ _id: id }).exec()
-        if (doctorUsingSpeciality) {
+        if (!isValidObjectId(id)) throw new BadRequestException("Invalid speciality ID")
+
+        const isBeingUsed = await this.doctorModel.exists({ specialty: new Types.ObjectId(id) }).exec()
+        if (isBeingUsed) {
             throw new BadRequestException("Cannot delete speciality as it is assigned to doctors")
         }
 
-        const result = await this.specialityModel.findOneAndDelete({ _id: id }).exec()
+        const result = await this.specialityModel.findByIdAndDelete(id).exec()
         if (!result) throw new NotFoundException("Speciality not found")
     }
 }

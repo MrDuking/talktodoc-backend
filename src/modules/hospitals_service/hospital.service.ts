@@ -1,24 +1,35 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import {
+    Injectable,
+    BadRequestException,
+    InternalServerErrorException,
+    NotFoundException
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { Hospital, HospitalDocument } from "./schemas/hospital.schema";
 import { CreateHospitalDto, UpdateHospitalDto } from "./dtos/index";
 
 @Injectable()
 export class HospitalService {
-    constructor(@InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>) {}
+    constructor(
+        @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>
+    ) {}
 
     async getAllHospitals(): Promise<Hospital[]> {
         return this.hospitalModel
             .find()
-            .populate({ path: "specialty", model: "Speciality", localField: "specialty", foreignField: "id" })
+            .populate("specialty")
             .exec();
     }
 
     async getHospitalById(id: string): Promise<Hospital> {
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException("Invalid hospital ID format");
+        }
+
         const hospital = await this.hospitalModel
-            .findOne({ id })
-            .populate({ path: "specialty", model: "Speciality", localField: "specialty", foreignField: "id" })
+            .findById(id)
+            .populate("specialty")
             .exec();
 
         if (!hospital) throw new NotFoundException("Hospital not found");
@@ -36,10 +47,9 @@ export class HospitalService {
 
         if (query) {
             filter.$or = [
-                { id: { $regex: query, $options: "i" } },
                 { name: { $regex: query, $options: "i" } },
                 { address: { $regex: query, $options: "i" } },
-                { specialities: { $in: [new RegExp(query, "i")] } }
+                { phoneNumber: { $regex: query, $options: "i" } }
             ];
         }
 
@@ -49,6 +59,7 @@ export class HospitalService {
             .skip((page - 1) * limit)
             .limit(limit)
             .sort({ [sortField]: sortOrder })
+            .populate("specialty")
             .lean()
             .exec();
 
@@ -57,10 +68,11 @@ export class HospitalService {
 
     async createHospital(createHospitalDto: CreateHospitalDto): Promise<Hospital> {
         try {
-            const existingHospital = await this.hospitalModel.findOne({ name: createHospitalDto.name }).exec();
-            if (existingHospital) {
+            const existing = await this.hospitalModel.findOne({ name: createHospitalDto.name }).exec();
+            if (existing) {
                 throw new BadRequestException("Hospital name already exists");
             }
+
             const hospital = new this.hospitalModel(createHospitalDto);
             return await hospital.save();
         } catch (error: any) {
@@ -70,15 +82,26 @@ export class HospitalService {
         }
     }
 
-
     async updateHospital(id: string, updateHospitalDto: UpdateHospitalDto): Promise<Hospital> {
-        const updatedHospital = await this.hospitalModel.findOneAndUpdate({ _id:id }, updateHospitalDto, { new: true }).exec();
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException("Invalid hospital ID format");
+        }
+
+        const updatedHospital = await this.hospitalModel
+            .findByIdAndUpdate(id, updateHospitalDto, { new: true })
+            .populate("specialty")
+            .exec();
+
         if (!updatedHospital) throw new NotFoundException("Hospital not found");
         return updatedHospital;
     }
 
     async deleteHospital(id: string): Promise<void> {
-        const result = await this.hospitalModel.findOneAndDelete({ _id:id }).exec();
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException("Invalid hospital ID format");
+        }
+
+        const result = await this.hospitalModel.findByIdAndDelete(id).exec();
         if (!result) throw new NotFoundException("Hospital not found");
     }
 }

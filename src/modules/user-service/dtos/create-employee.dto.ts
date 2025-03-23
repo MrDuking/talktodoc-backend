@@ -1,5 +1,6 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger"
-import { IsBoolean, IsDateString, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator"
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator"
+import { Types } from "mongoose"
 
 export class CreateEmployeeDto {
     @ApiProperty({ example: "duk@example.com", description: "Employee's email" })
@@ -31,6 +32,12 @@ export class CreateEmployeeDto {
     @IsString()
     @IsNotEmpty()
     department?: string;
+
+    @ApiProperty({ example: ["605c72c3fc13ae1b3c000002"], description: "List of specialty IDs" })
+    @IsArray()
+    @IsOptional()
+    @IsString({ each: true })
+    specialty!: Types.ObjectId[]
 
     @ApiProperty({ example: "2023-05-15", description: "Start date of the employee (YYYY-MM-DD)" })
     @IsDateString()
