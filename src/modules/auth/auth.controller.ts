@@ -3,34 +3,31 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nes
 import { LoginDto } from "./dtos/index"
 import { LocalAuthGuard } from "./guards/local-auth.guard"
 import { AuthService } from "./index"
+import { RegisterUserDto } from "./dtos/register-user.dto"
 
 @ApiTags("auth")
 @Controller("api/v1/auth")
 export class AuthController {
-    constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-    @ApiOperation({ summary: "Login and get JWT token" })
-    @ApiResponse({ status: 201, description: "Login successful. Returns JWT token." })
-    @ApiResponse({ status: 401, description: "Unauthorized. Invalid credentials." })
-    @ApiBody({ type: LoginDto })
-    @UseGuards(LocalAuthGuard)
-    @Post("login")
-    @HttpCode(HttpStatus.CREATED)
-    async login(@Body() loginDto: LoginDto) {
-        try {
-            return await this.authService.login(loginDto)
-        } catch (error: any) {
-            console.error("Error in login:", error.message)
-            throw new UnauthorizedException("Invalid login credentials")
-        }
-    }
+  @ApiOperation({ summary: "Login and get JWT token" })
+  @UseGuards(LocalAuthGuard)
+  @Post("login")
+  @HttpCode(HttpStatus.CREATED)
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
+  }
 
-    @ApiOperation({ summary: "Logout user" })
-    @ApiResponse({ status: 200, description: "Logout successful." })
-    @ApiBearerAuth()
-    @Post("logout")
-    @HttpCode(HttpStatus.OK)
-    async logout() {
-        return { message: "Logout successful" }
-    }
+  @ApiOperation({ summary: "Register base user" })
+  @Post("register")
+  async register(@Body() dto: RegisterUserDto) {
+    return this.authService.register(dto);
+  }
+
+  @ApiOperation({ summary: "Logout user" })
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  async logout() {
+    return { message: "Logout successful" };
+  }
 }
