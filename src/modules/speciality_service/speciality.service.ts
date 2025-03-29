@@ -41,7 +41,7 @@ export class SpecialityService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ [sortField]: sortOrder })
+            .sort({ createdAt: "desc" })
             .lean()
             .exec()
 

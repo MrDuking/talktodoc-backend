@@ -35,7 +35,7 @@ class Appointment {
     status!: string
 }
 
-@Schema()
+@Schema({ timestamps: true })
 export class Patient extends BaseUser {
     @Prop({ unique: true })
     id!: string

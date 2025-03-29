@@ -27,40 +27,31 @@ export class UsersService {
 
     // ===================== API CHO EMPLOYEE =====================
     async getAllEmployees(): Promise<Employee[]> {
-        return this.employeeModel.find()
-            .populate("specialty")
-            .exec();
+        return this.employeeModel.find().populate("specialty").exec()
     }
 
     async getEmployeeById(id: string): Promise<Employee> {
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid employee ID format");
+            throw new BadRequestException("Invalid employee ID format")
         }
 
-        const employee = await this.employeeModel.findById(id)
-            .populate("specialty")
-            .exec();
+        const employee = await this.employeeModel.findById(id).populate("specialty").exec()
 
-        if (!employee) throw new NotFoundException("Employee not found");
-        return employee;
+        if (!employee) throw new NotFoundException("Employee not found")
+        return employee
     }
-    
+
     async createEmployee(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
         const employee = new this.employeeModel(createEmployeeDto)
         return employee.save()
     }
 
     async updateEmployee(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
-        const updatedEmployee = await this.employeeModel.findByIdAndUpdate(
-            id,
-            updateEmployeeDto,
-            { new: true }
-        ).exec();
+        const updatedEmployee = await this.employeeModel.findByIdAndUpdate(id, updateEmployeeDto, { new: true }).exec()
 
-        if (!updatedEmployee) throw new NotFoundException("Employee not found");
-        return updatedEmployee;
+        if (!updatedEmployee) throw new NotFoundException("Employee not found")
+        return updatedEmployee
     }
-
 
     async deleteEmployee(id: string): Promise<void> {
         if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid employee ID format")
@@ -70,30 +61,19 @@ export class UsersService {
 
     // ===================== API CHO DOCTOR =====================
     async getAllDoctors(): Promise<Doctor[]> {
-        return this.doctorModel
-            .find()
-            .populate("specialty")
-            .populate("rank")
-            .populate("hospital")
-            .exec()
+        return this.doctorModel.find().populate("specialty").populate("rank").populate("hospital").exec()
     }
 
     async getDoctorById(id: string): Promise<Doctor> {
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid doctor ID format");
+            throw new BadRequestException("Invalid doctor ID format")
         }
 
-        const doctor = await this.doctorModel
-            .findById(id)
-            .populate("specialty")
-            .populate("rank")
-            .populate("hospital")
-            .exec();
+        const doctor = await this.doctorModel.findById(id).populate("specialty").populate("rank").populate("hospital").exec()
 
-        if (!doctor) throw new NotFoundException("Doctor not found");
-        return doctor;
+        if (!doctor) throw new NotFoundException("Doctor not found")
+        return doctor
     }
-
 
     async createDoctor(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
         const doctor = new this.doctorModel(createDoctorDto)
@@ -102,26 +82,18 @@ export class UsersService {
 
     async updateDoctor(id: string, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid doctor ID format");
+            throw new BadRequestException("Invalid doctor ID format")
         }
 
-        const updatedDoctor = await this.doctorModel
-            .findByIdAndUpdate(id, updateDoctorDto, { new: true, runValidators: true })
-            .exec();
+        const updatedDoctor = await this.doctorModel.findByIdAndUpdate(id, updateDoctorDto, { new: true, runValidators: true }).exec()
 
-        if (!updatedDoctor) throw new NotFoundException("Doctor not found");
+        if (!updatedDoctor) throw new NotFoundException("Doctor not found")
 
-        const populatedDoctor = await this.doctorModel
-            .findById(updatedDoctor._id)
-            .populate("specialty")
-            .populate("rank")
-            .populate("hospital")
-            .exec();
+        const populatedDoctor = await this.doctorModel.findById(updatedDoctor._id).populate("specialty").populate("rank").populate("hospital").exec()
 
-        if (!populatedDoctor) throw new NotFoundException("Doctor not found");
-        return populatedDoctor;
+        if (!populatedDoctor) throw new NotFoundException("Doctor not found")
+        return populatedDoctor
     }
-
 
     async deleteDoctor(id: string): Promise<void> {
         if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid doctor ID format")
@@ -182,7 +154,7 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ [sortField]: sortOrder })
+            .sort({ createdAt: "desc" })
             .lean()
             .exec()
 
@@ -210,10 +182,12 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ [sortField]: sortOrder })
+            .sort({ createdAt: "desc" })
             .lean()
+            // .populate("specialty")
+            .populate("rank")
+            .populate("hospital")
             .exec()
-
         return { data: doctors, total, page, limit }
     }
 
@@ -235,7 +209,7 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ [sortField]: sortOrder })
+            .sort({ createdAt: "desc" })
             .lean()
             .exec()
 
