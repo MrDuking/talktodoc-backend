@@ -7,68 +7,150 @@ import csvParser from 'csv-parser';
 import { InjectRedis } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 
-Injectable()
+@Injectable()
 export class MedicineService {
   constructor(
     @InjectModel(Medicine.name) private medicineModel: Model<MedicineDocument>,
-    @InjectRedis() private readonly redis: Redis
+    @InjectRedis() private readonly redis: Redis,
   ) {}
 
   async importFromCSV(filePath: string) {
     const taskId = `task:${Date.now()}`;
-    const errors = [];
+    const errors: { line: number; reason: string }[] = [];
+    const updates: number[] = [];
+    const created: number[] = [];
+    const duplicatesInBatch: number[] = [];
+    const alreadyExists: number[] = [];
+
     let total = 0;
     let processed = 0;
-    let success = 0;
-
-    console.log(`Starting import: ${taskId}`);
+    const batchSize = 200;
+    const buffer: any[] = [];
 
     const stream = fs.createReadStream(filePath).pipe(csvParser());
 
-    for await (const row of stream) {
-      total++;
-
-      const id = row['ID']?.toString();
-      const name = row['Name'];
-      const priceRaw = row['Final Cost']?.replace('£', '').replace(',', '').trim();
-      const price = parseFloat(priceRaw || '0') * 25;
-      const quantity = row['Quanitty']?.toString();
-
-      if (!id || !name || !price || !quantity) {
-        errors.push({ line: total, reason: 'Missing fields' });
-        console.warn(` Line ${total} skipped: Missing fields`);
-        continue;
-      }
-
-      const exists = await this.medicineModel.findOne({ id }).exec();
-      if (exists) {
-        errors.push({ line: total, reason: 'Duplicate ID' });
-        console.warn(` Line ${total} skipped: Duplicate ID`);
-        continue;
-      }
-
-      try {
-        await this.medicineModel.create({ id, name, price, quantity });
-        success++;
-      } catch (e) {
-        errors.push({ line: total, reason: 'DB error' });
-        console.error(`Line ${total} DB error:`, e instanceof Error ? e.message : 'Unknown error');
-      }
-
-      processed++;
-      if (processed % 100 === 0) {
-        console.log(`Processed ${processed}/${total} rows...`);
-      }
-
+    const toRedis = async () => {
       await this.redis.set(
         `import:medicine:${taskId}`,
-        JSON.stringify({ total, processed, success, errors })
+        JSON.stringify({
+          total,
+          processed,
+          created: created.length,
+          updated: updates.length,
+          duplicateInBatch: duplicatesInBatch.length,
+          alreadyExists: alreadyExists.length,
+          failed: errors.length,
+          errors,
+        })
       );
+    };
+
+    for await (const row of stream) {
+      total++;
+      const line = total;
+      const id = row['ID']?.trim();
+      const name = row['Name']?.trim();
+      const priceRaw = row['Final Cost']?.replace('£', '').replace(',', '').trim();
+      const quantity = row['Quanitty']?.trim();
+      const price = parseFloat(priceRaw || '0') * 25;
+
+      if (!id || !name || !price || !quantity) {
+        errors.push({ line, reason: 'Missing fields' });
+        continue;
+      }
+
+      buffer.push({ id, name, price, quantity, line });
+
+      if (buffer.length >= batchSize) {
+        await this.processBatch(buffer, { created, updates, duplicatesInBatch, alreadyExists, errors });
+        processed += buffer.length;
+        buffer.length = 0;
+        await toRedis();
+      }
     }
 
-    console.log(`Import completed: ${success} inserted, ${errors.length} errors.`);
+    if (buffer.length > 0) {
+      await this.processBatch(buffer, { created, updates, duplicatesInBatch, alreadyExists, errors });
+      processed += buffer.length;
+      await toRedis();
+    }
 
-    return { taskId, total, processed, success, errors };
+    await toRedis();
+
+    return {
+      taskId,
+      total,
+      processed,
+      created: created.length,
+      updated: updates.length,
+      duplicateInBatch: duplicatesInBatch.length,
+      alreadyExists: alreadyExists.length,
+      failed: errors.length,
+      errors,
+    };
+  }
+
+  private async processBatch(
+    rows: any[],
+    statusTrackers: {
+      created: number[];
+      updates: number[];
+      duplicatesInBatch: number[];
+      alreadyExists: number[];
+      errors: { line: number; reason: string }[];
+    }
+  ) {
+    const { created, updates, duplicatesInBatch, alreadyExists, errors } = statusTrackers;
+
+    const seen = new Set<string>();
+    const uniqueRows = [];
+
+    for (const row of rows) {
+      if (seen.has(row.id)) {
+        duplicatesInBatch.push(row.line);
+      } else {
+        seen.add(row.id);
+        uniqueRows.push(row);
+      }
+    }
+
+    const ids = uniqueRows.map((r) => r.id);
+    const existingDocs = await this.medicineModel.find({ id: { $in: ids } }).lean();
+    const existingMap = new Map(existingDocs.map((d) => [d.id, d]));
+
+    const bulkOps = uniqueRows.map(({ id, name, price, quantity, line }) => {
+      const existing = existingMap.get(id);
+      if (existing) {
+        const isDifferent = existing.name !== name || existing.price !== price || existing.quantity !== quantity;
+        if (isDifferent) {
+          updates.push(line);
+          return {
+            updateOne: {
+              filter: { id },
+              update: { name, price, quantity },
+            },
+          } as const;
+        } else {
+          alreadyExists.push(line);
+          return null;
+        }
+      } else {
+        created.push(line);
+        return {
+          insertOne: { document: { id, name, price, quantity } },
+        } as const;
+      }
+    }).filter((op): op is NonNullable<typeof op> => op !== null);
+
+    try {
+      if (bulkOps.length) {
+        await this.medicineModel.bulkWrite(bulkOps);
+      }
+    } catch (e) {
+      uniqueRows.forEach((r) => {
+        errors.push({ line: r.line, reason: 'DB error' });
+      });
+    }
   }
 
   async getAll(page = 1, limit = 10) {

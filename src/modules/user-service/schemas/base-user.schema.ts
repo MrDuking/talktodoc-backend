@@ -1,74 +1,40 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Prop } from "@nestjs/mongoose"
 
-export type BaseUserDocument = BaseUser & Document;
-
-class City {
-    @Prop({ required: true })
-    name!: string;
-
-    @Prop({ required: true })
-    code!: number;
-
-    @Prop({ required: true })
-    division_type!: string;
-
-    @Prop({ required: true })
-    codename!: string;
-
-    @Prop({ required: true })
-    phone_code!: number;
-
-    @Prop({ type: [Object], default: [] })
-    districts?: any[];
-}
-
-@Schema({ timestamps: true })
-export class BaseUser {
+export abstract class BaseUser {
     @Prop({ required: true, unique: true })
-    username!: string;
+    username!: string
 
     @Prop({ required: true })
-    password!: string;
+    password!: string
 
     @Prop({ required: true, unique: true })
-    email!: string;
+    email!: string
 
     @Prop()
-    fullName!: string;
+    fullName!: string
 
     @Prop({ required: true })
-    phoneNumber!: string;
+    phoneNumber!: string
 
     @Prop({ type: Date })
-    birthDate!: Date;
+    birthDate!: Date
 
     @Prop({ default: true })
-    isActive!: boolean;
+    isActive!: boolean
 
     @Prop()
-    avatarUrl?: string;
+    avatarUrl?: string
 
-    @Prop({ type: City, default: null })
-    city?: City;
+    @Prop({
+        type: Object,
+        default: null
+    })
+    city?: {
+        name: string
+        code: number
+        division_type: string
+        codename: string
+        phone_code: number
+        districts?: any[]
+    }
 }
-
-export const BaseUserSchema = SchemaFactory.createForClass(BaseUser);
-
-BaseUserSchema.set("toJSON", {
-    virtuals: true,
-    versionKey: false,
-    transform: (_, ret) => {
-        ret.id = ret._id.toString();
-        return ret;
-    }
-});
-
-BaseUserSchema.set("toObject", {
-    virtuals: true,
-    versionKey: false,
-    transform: (_, ret) => {
-        ret.id = ret._id.toString();
-        return ret;
-    }
-});

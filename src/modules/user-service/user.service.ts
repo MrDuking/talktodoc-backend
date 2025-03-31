@@ -1,8 +1,7 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common"
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common"
 import { InjectModel } from "@nestjs/mongoose"
 import mongoose, { Model } from "mongoose"
 import { CreateDoctorDto, CreateEmployeeDto, CreatePatientDto, UpdateDoctorDto, UpdateEmployeeDto, UpdatePatientDto } from "./dtos/index"
-import { BaseUser, BaseUserDocument } from "./schemas/base-user.schema"
 import { Doctor, DoctorDocument } from "./schemas/doctor.schema"
 import { Employee, EmployeeDocument } from "./schemas/employee.schema"
 import { Patient, PatientDocument } from "./schemas/patient.schema"
@@ -10,22 +9,11 @@ import { Patient, PatientDocument } from "./schemas/patient.schema"
 @Injectable()
 export class UsersService {
     constructor(
-        @InjectModel(BaseUser.name) private baseUserModel: Model<BaseUserDocument>,
         @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
         @InjectModel(Doctor.name) private doctorModel: Model<DoctorDocument>,
         @InjectModel(Patient.name) private patientModel: Model<PatientDocument>
-    ) {}
+    ) {} // ===================== API CHO EMPLOYEE =====================
 
-    async findByUsername(username: string): Promise<BaseUser | null> {
-        try {
-            return await this.baseUserModel.findOne({ username }).lean().exec()
-        } catch (error: any) {
-            console.error("Error finding user by username:", error.message)
-            throw new InternalServerErrorException("Error finding user by username")
-        }
-    }
-
-    // ===================== API CHO EMPLOYEE =====================
     async getAllEmployees(): Promise<Employee[]> {
         return this.employeeModel.find().populate("specialty").exec()
     }
@@ -57,9 +45,8 @@ export class UsersService {
         if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid employee ID format")
         const result = await this.employeeModel.findByIdAndDelete(id).exec()
         if (!result) throw new NotFoundException("Employee not found")
-    }
+    } // ===================== API CHO DOCTOR =====================
 
-    // ===================== API CHO DOCTOR =====================
     async getAllDoctors(): Promise<Doctor[]> {
         return this.doctorModel.find().populate("specialty").populate("rank").populate("hospital").exec()
     }
@@ -99,9 +86,8 @@ export class UsersService {
         if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid doctor ID format")
         const result = await this.doctorModel.findByIdAndDelete(id).exec()
         if (!result) throw new NotFoundException("Doctor not found")
-    }
+    } // ===================== API CHO PATIENT =====================
 
-    // ===================== API CHO PATIENT =====================
     async getAllPatients(): Promise<Patient[]> {
         return this.patientModel.find().exec()
     }
@@ -129,9 +115,7 @@ export class UsersService {
         if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid patient ID format")
         const result = await this.patientModel.findByIdAndDelete(id).exec()
         if (!result) throw new NotFoundException("Patient not found")
-    }
-
-    // ===================== Search =====================
+    } // ===================== Search =====================
 
     async searchEmployees(query: string, page: number = 1, limit: number = 10, sortField: string = "name", sortOrder: "asc" | "desc" = "asc") {
         const filter: any = {}
@@ -142,7 +126,6 @@ export class UsersService {
                 { name: { $regex: query, $options: "i" } },
                 { position: { $regex: query, $options: "i" } },
                 { department: { $regex: query, $options: "i" } },
-                { specialty: { $in: [new RegExp(query, "i")] } },
                 { fullName: { $regex: query, $options: "i" } },
                 { email: { $regex: query, $options: "i" } },
                 { phoneNumber: { $regex: query, $options: "i" } }
@@ -154,7 +137,7 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ createdAt: "desc" })
+            .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
             .lean()
             .exec()
 
@@ -168,9 +151,6 @@ export class UsersService {
             filter.$or = [
                 { id: { $regex: query, $options: "i" } },
                 { name: { $regex: query, $options: "i" } },
-                { specialty: { $in: [new RegExp(query, "i")] } },
-                { hospital: { $regex: query, $options: "i" } },
-                { rank: { $regex: query, $options: "i" } },
                 { fullName: { $regex: query, $options: "i" } },
                 { email: { $regex: query, $options: "i" } },
                 { phoneNumber: { $regex: query, $options: "i" } }
@@ -182,12 +162,13 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ createdAt: "desc" })
-            .lean()
-            // .populate("specialty")
+            .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
             .populate("rank")
             .populate("hospital")
+            .populate("specialty")
+            .lean()
             .exec()
+
         return { data: doctors, total, page, limit }
     }
 
@@ -209,7 +190,7 @@ export class UsersService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ createdAt: "desc" })
+            .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
             .lean()
             .exec()
 

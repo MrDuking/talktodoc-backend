@@ -8,16 +8,22 @@ import { CreateEmployeeDto, UpdateEmployeeDto } from "../dtos/index";
 export class EmployeeController {
     constructor(private readonly usersService: UsersService) {}
 
-    @ApiOperation({ summary: "Search employees" })
+    @ApiOperation({ summary: "Search Employees" })
+    @ApiResponse({ status: 200, description: "Return matching employees with pagination." })
+    @ApiQuery({ name: "query", required: false, description: "Search term" })
+    @ApiQuery({ name: "page", required: false, example: 1 })
+    @ApiQuery({ name: "limit", required: false, example: 10 })
+    @ApiQuery({ name: "sortField", required: false, example: "name" })
+    @ApiQuery({ name: "sortOrder", enum: ["asc", "desc"], required: false, example: "asc" })
     @Get("search")
-    searchEmployees(
+    async searchEmployees(
         @Query("query") query: string = "",
         @Query("page") page: number = 1,
         @Query("limit") limit: number = 10,
         @Query("sortField") sortField: string = "name",
         @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
     ) {
-        return this.usersService.searchEmployees(query, page, limit, sortField, sortOrder);
+        return await this.usersService.searchEmployees(query, page, limit, sortField, sortOrder)
     }
 
     @ApiOperation({ summary: "Get all employees" })

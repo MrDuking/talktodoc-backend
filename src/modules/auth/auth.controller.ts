@@ -1,9 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common"
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common"
 import { ApiOperation, ApiTags } from "@nestjs/swagger"
-import { LoginDto } from "./dtos/index"
+import { AuthService } from "./auth.service"
+import { Roles } from "./decorators/roles.decorator"
+import { LoginDto } from "./dtos/login.dto"
 import { RegisterUserDto } from "./dtos/register-user.dto"
+import { JwtAuthGuard } from "./guards/jwt-auth.guard"
 import { LocalAuthGuard } from "./guards/local-auth.guard"
-import { AuthService } from "./index"
+import { RolesGuard } from "./guards/roles.guard"
 
 @ApiTags("auth")
 @Controller("api/v1/auth")
@@ -13,13 +16,14 @@ export class AuthController {
     @ApiOperation({ summary: "Login and get JWT token" })
     @UseGuards(LocalAuthGuard)
     @Post("login")
-    @HttpCode(HttpStatus.CREATED)
+    @HttpCode(HttpStatus.OK)
     async login(@Body() loginDto: LoginDto) {
         return this.authService.login(loginDto)
     }
 
-    @ApiOperation({ summary: "Register base user" })
+    @ApiOperation({ summary: "Register new patient account" })
     @Post("register")
+    @HttpCode(HttpStatus.CREATED)
     async register(@Body() dto: RegisterUserDto) {
         return this.authService.register(dto)
     }
@@ -30,4 +34,5 @@ export class AuthController {
     async logout() {
         return { message: "Logout successful" }
     }
+
 }

@@ -27,7 +27,7 @@ export class HospitalService {
         const filter: any = {}
 
         if (query) {
-            filter.$or = [{ name: { $regex: query, $options: "i" } }, { address: { $regex: query, $options: "i" } }, { phoneNumber: { $regex: query, $options: "i" } }]
+            filter.$or = [ { id: { $regex: query, $options: "i" } },{ name: { $regex: query, $options: "i" } }, { address: { $regex: query, $options: "i" } }, { phoneNumber: { $regex: query, $options: "i" } }]
         }
 
         const total = await this.hospitalModel.countDocuments(filter)

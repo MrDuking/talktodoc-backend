@@ -1,5 +1,5 @@
 import { Body, Query, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { UsersService } from "../user.service";
 import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
 
@@ -8,17 +8,23 @@ import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
 export class DoctorController {
     constructor(private readonly usersService: UsersService) {}
 
+    @ApiOperation({ summary: "Search doctors" })
+    @ApiResponse({ status: 200, description: "Return matching doctors with pagination." })
+    @ApiQuery({ name: "query", required: false, description: "Search term" })
+    @ApiQuery({ name: "page", required: false, example: 1 })
+    @ApiQuery({ name: "limit", required: false, example: 10 })
+    @ApiQuery({ name: "sortField", required: false, example: "name" })
+    @ApiQuery({ name: "sortOrder", enum: ["asc", "desc"], required: false, example: "asc" })
     @Get("search")
     async searchDoctors(
-        @Query("query") query: string,
+        @Query("query") query: string = "",
         @Query("page") page: number = 1,
         @Query("limit") limit: number = 10,
         @Query("sortField") sortField: string = "name",
         @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
     ) {
-        return this.usersService.searchDoctors(query, page, limit, sortField, sortOrder);
+        return await this.usersService.searchDoctors(query, page, limit, sortField, sortOrder)
     }
-
     @ApiOperation({ summary: "Get all doctors" })
     @ApiResponse({ status: 200, description: "Return all doctors." })
     @Get()

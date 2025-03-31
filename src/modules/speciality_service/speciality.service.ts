@@ -32,7 +32,6 @@ export class SpecialityService {
                 { id: { $regex: query, $options: "i" } },
                 { name: { $regex: query, $options: "i" } },
                 { description: { $regex: query, $options: "i" } },
-                { config: { $regex: query, $options: "i" } }
             ]
         }
 
@@ -41,11 +40,9 @@ export class SpecialityService {
             .find(filter)
             .skip((page - 1) * limit)
             .limit(limit)
-            .sort({ createdAt: "desc" })
-            .lean()
-            .exec()
-
-        return { data: specialities, total, page, limit }
+            .sort({ [sortField]: sortOrder })
+             .sort({ createdAt: "desc" })
+     return { data: specialities, total, page, limit }
     }
 
     async createSpeciality(createSpecialityDto: CreateSpecialityDto): Promise<Speciality> {

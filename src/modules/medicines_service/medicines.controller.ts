@@ -1,15 +1,15 @@
-import { Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from "@nestjs/common"
-import { FileInterceptor } from "@nestjs/platform-express"
-import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger"
-import { diskStorage } from "Multer"
-import { MedicineService } from "./medicines.service"
+import { Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { diskStorage } from "Multer";
+import { MedicineService } from "./medicines.service";
 
 @ApiTags("Medicines")
 @Controller("api/v1/medicines")
 export class MedicineController {
     constructor(private readonly medicineService: MedicineService) {}
 
-    @ApiOperation({ summary: "Import medicines from a CSV file" })
+    @ApiOperation({ summary: "Import or update medicines from a CSV file" })
     @ApiConsumes("multipart/form-data")
     @ApiBody({
         schema: {
@@ -22,7 +22,7 @@ export class MedicineController {
             }
         }
     })
-    @ApiResponse({ status: 201, description: "Medicines imported successfully" })
+    @ApiResponse({ status: 201, description: "Medicines imported or updated successfully" })
     @Post("import")
     @UseInterceptors(
         FileInterceptor("file", {
@@ -33,7 +33,7 @@ export class MedicineController {
         })
     )
     importMedicineCSV(@UploadedFile() file: Express.Multer.File) {
-        return this.medicineService.importFromCSV(file.path)
+        return this.medicineService.importFromCSV(file.path);
     }
 
     @ApiOperation({ summary: "Get all medicines with pagination" })
@@ -42,7 +42,7 @@ export class MedicineController {
     @ApiResponse({ status: 200, description: "Return list of medicines" })
     @Get()
     getAll(@Query("page") page = 1, @Query("limit") limit = 10) {
-        return this.medicineService.getAll(+page, +limit)
+        return this.medicineService.getAll(+page, +limit);
     }
 
     @ApiOperation({ summary: "Get import progress by task ID" })
@@ -50,6 +50,6 @@ export class MedicineController {
     @ApiResponse({ status: 200, description: "Return progress of import task" })
     @Get("progress/:taskId")
     getProgress(@Param("taskId") taskId: string) {
-        return this.medicineService.getProgress(taskId)
+        return this.medicineService.getProgress(taskId);
     }
 }
