@@ -15,7 +15,7 @@ export class MedicineService {
   ) {}
 
   async importFromCSV(filePath: string) {
-    const taskId = `task:${Date.now()}`;
+    const taskId = `${Date.now()}`;
     const errors: { line: number; reason: string }[] = [];
     const updates: number[] = [];
     const created: number[] = [];

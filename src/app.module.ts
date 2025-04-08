@@ -8,10 +8,18 @@ import { SpecialityModule } from "./modules/speciality_service/speciality.module
 import { HospitalModule } from "./modules/hospitals_service/hospital.module";
 import { DoctorLevelModule } from "./modules/doctor_levels_service/doctor-level.module"
 import { MedicineModule } from "./modules/medicines_service/medicines.module"
+import { PaymentModule } from "./modules/payment_serivce/payment.module"
+import { ContactModule } from "./modules/contact-serivce/mail.module"
+import vnpayConfig from "./config/vnpay_config/vnpay.config"
+
 
 @Module({
     imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        ConfigModule.forRoot({
+             isGlobal: true,
+             load: [vnpayConfig],
+             }),
+
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
@@ -26,7 +34,9 @@ import { MedicineModule } from "./modules/medicines_service/medicines.module"
         SpecialityModule,
         DoctorLevelModule,
         MedicineModule,
-        HospitalModule
+        HospitalModule,
+        ContactModule,
+        PaymentModule
     ]
 })
 export class AppModule {}
