@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import moment from 'moment';
 import * as crypto from 'crypto';
-import * as querystring from 'qs';
 import { ConfigService } from '@nestjs/config';
 import { OrderMapping } from './schemas/order-mapping.schema';
 import { PaymentRequestDto } from './dto/payment-request.dto';
@@ -67,14 +66,25 @@ export class PaymentService {
       vnp_CreateDate: createDate,
     };
 
-    vnp_Params = this.sortObject(vnp_Params);
-    const signData = querystring.stringify(vnp_Params, { encode: false });
+    // Sort and build query string manually
+    const sortedParams = Object.keys(vnp_Params)
+      .sort()
+      .map((key) => `${key}=${vnp_Params[key]}`)
+      .join('&');
+
+    // Create secure hash manually (no qs.stringify)
     const hmac = crypto.createHmac('sha512', this.vnp_HashSecret);
-    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    const signed = hmac.update(Buffer.from(sortedParams, 'utf-8')).digest('hex');
+
     vnp_Params['vnp_SecureHash'] = signed;
 
-    const vnpUrl =
-      this.vnp_Url + '?' + querystring.stringify(vnp_Params, { encode: false });
+    // Rebuild final URL
+    const queryString = Object.keys(vnp_Params)
+      .sort()
+      .map((key) => `${key}=${encodeURIComponent(vnp_Params[key])}`)
+      .join('&');
+
+    const vnpUrl = `${this.vnp_Url}?${queryString}`;
 
     return { paymentUrl: vnpUrl };
   }
@@ -170,6 +180,8 @@ export class PaymentService {
     const userInfo = await this.usersService.findOneUser(userId);
     if (!userInfo) throw new NotFoundException('User not found');
 
+    const baseUser = userInfo as any;
+
     return payments.map((payment) => ({
       orderId: payment.orderId,
       amount: payment.amount,
@@ -177,8 +189,8 @@ export class PaymentService {
       createdAt: payment.createdAt,
       completedAt: payment.completedAt,
       user: {
-        name: (userInfo as any).name,
-        email: (userInfo as any).email,
+        name: baseUser.name,
+        email: baseUser.email,
       },
     }));
   }
@@ -193,13 +205,14 @@ export class PaymentService {
       orders.map(async (order) => {
         try {
           const userInfo = await this.usersService.findOneUser(order.userId);
+          const baseUser = userInfo as any;
           return {
             ...order.toJSON(),
-            userInfo: userInfo
+            userInfo: baseUser
               ? {
-                  _id: (userInfo as any)._id,
-                  name: (userInfo as any).name,
-                  email: (userInfo as any).email,
+                  _id: baseUser._id,
+                  name: baseUser.name,
+                  email: baseUser.email,
                 }
               : { message: 'User not found' },
           };

@@ -57,7 +57,7 @@ export class CreateEmployeeDto {
     @ApiProperty({ example: "avatar_url.jpg", description: "Employee's avatar", required: false })
     @IsOptional()
     @IsString()
-    avatar?: string
+    avatarUrl?: string
 
     @ApiProperty({ example: true, description: "Is employee active?", required: false })
     @IsOptional()

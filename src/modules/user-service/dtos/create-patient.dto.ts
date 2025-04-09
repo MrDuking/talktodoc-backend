@@ -118,7 +118,7 @@ export class CreatePatientDto {
     @ApiProperty({ example: "https://example.com/avatar.jpg", description: "Patient's avatar URL" })
     @IsString()
     @IsOptional()
-    avatar?: string
+    avatarUrl?: string
 
     @ApiProperty({ type: [MedicalHistoryDto], description: "Medical history records" })
     @IsArray()

@@ -196,4 +196,22 @@ export class UsersService {
 
         return { data: patients, total, page, limit }
     }
+    //find one
+async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    const patient = await this.patientModel.findById(userId).exec();
+    if (patient) return patient;
+
+    const doctor = await this.doctorModel.findById(userId).exec();
+    if (doctor) return doctor;
+
+    const employee = await this.employeeModel.findById(userId).exec();
+    if (employee) return employee;
+
+    return null;
+  }
+
 }

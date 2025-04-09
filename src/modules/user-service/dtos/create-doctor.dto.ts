@@ -50,7 +50,7 @@ export class CreateDoctorDto {
     @ApiProperty({ example: "avatar_url.jpg", description: "Doctor's avatar", required: false })
     @IsOptional()
     @IsString()
-    avatar?: string
+    avatarUrl?: string
 
     @ApiProperty({ example: true, description: "Is doctor active?", required: false })
     @IsOptional()
