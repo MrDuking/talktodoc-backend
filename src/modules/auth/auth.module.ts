@@ -13,6 +13,7 @@ import { Admin, AdminSchema } from "../user-service/schemas/admin.schema"
 import { Doctor, DoctorSchema } from "../user-service/schemas/doctor.schema"
 import { Employee, EmployeeSchema } from "../user-service/schemas/employee.schema"
 import { Patient, PatientSchema } from "../user-service/schemas/patient.schema"
+import { EmailOtp, EmailOtpSchema } from "../otp_service/schemas/email-otp.schema"
 
 @Module({
     imports: [
@@ -31,7 +32,8 @@ import { Patient, PatientSchema } from "../user-service/schemas/patient.schema"
             { name: Admin.name, schema: AdminSchema },
             { name: Doctor.name, schema: DoctorSchema },
             { name: Employee.name, schema: EmployeeSchema },
-            { name: Patient.name, schema: PatientSchema }
+            { name: Patient.name, schema: PatientSchema },
+            { name: EmailOtp.name, schema: EmailOtpSchema }
         ])
     ],
     providers: [AuthService, JwtStrategy, LocalStrategy],

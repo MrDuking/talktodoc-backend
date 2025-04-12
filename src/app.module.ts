@@ -10,6 +10,7 @@ import { DoctorLevelModule } from "./modules/doctor_levels_service/doctor-level.
 import { MedicineModule } from "./modules/medicines_service/medicines.module"
 import { PaymentModule } from "./modules/payment_serivce/payment.module"
 import { ContactModule } from "./modules/contact-serivce/mail.module"
+import { OtpModule } from "./modules/otp_service/otp.module"
 import vnpayConfig from "./config/vnpay_config/vnpay.config"
 
 
@@ -36,6 +37,7 @@ import vnpayConfig from "./config/vnpay_config/vnpay.config"
         MedicineModule,
         HospitalModule,
         ContactModule,
+        OtpModule,
         PaymentModule
     ]
 })

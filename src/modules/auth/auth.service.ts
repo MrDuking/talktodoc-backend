@@ -9,6 +9,7 @@ import { Employee, EmployeeDocument } from "../user-service/schemas/employee.sch
 import { Patient, PatientDocument } from "../user-service/schemas/patient.schema"
 import { LoginDto } from "./dtos/login.dto"
 import { RegisterUserDto } from "./dtos/register-user.dto"
+import { EmailOtp, EmailOtpSchema } from '../otp_service/schemas/email-otp.schema';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,7 @@ export class AuthService {
         @InjectModel(Doctor.name) private doctorModel: Model<DoctorDocument>,
         @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
         @InjectModel(Patient.name) private patientModel: Model<PatientDocument>,
+        @InjectModel(EmailOtp.name) private otpModel: Model<EmailOtp>,
         private readonly jwtService: JwtService
     ) {}
 
@@ -70,14 +72,19 @@ export class AuthService {
     }
 
     async register(dto: RegisterUserDto): Promise<any> {
-        const { username, email, phoneNumber, password } = dto
-        const existing = await this.patientModel.findOne({
-            $or: [{ username }, { email }, { phoneNumber }]
-        })
+        const { username, email, phoneNumber, password } = dto;
 
-        if (existing) {
-            throw new UnauthorizedException("User already exists")
+        const existing = await this.patientModel.findOne({
+          $or: [{ username }, { email }, { phoneNumber }],
+        });
+        if (existing) throw new UnauthorizedException('User already exists');
+
+        // Kiểm tra OTP email đã được verify chưa
+        const otpVerified = await this.otpModel.findOne({ email, isVerified: true });
+        if (!otpVerified) {
+          throw new UnauthorizedException('Email not verified via OTP');
         }
+
 
         // const hashedPassword = await bcrypt.hash(password, 10) ma hoa
         const newUser = new this.patientModel({

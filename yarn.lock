@@ -7689,7 +7689,7 @@ mongoose-aggregate-paginate-v2@^1.1.1:
   resolved "https://registry.yarnpkg.com/mongoose-aggregate-paginate-v2/-/mongoose-aggregate-paginate-v2-1.1.4.tgz#7a8921ab4dfbae8247b82ed6c8fad00d7282f8d8"
   integrity sha512-CdQIar3wlS7g0H6JjSJIZzvzz05vFc+Xy9SosJmj46l3xIomgl3ZjDn/n4vDpEei9RBawgUk5zGTIP6fMKdMdA==
 
-mongoose@*, mongoose@^8.12.1:
+mongoose@*, mongoose@^8.13.2:
   version "8.13.2"
   resolved "https://registry.yarnpkg.com/mongoose/-/mongoose-8.13.2.tgz#c59458a9167a32f7f6cced2c572d320dafa703c9"
   integrity sha512-riCBqZmNkYBWjXpM3qWLDQw7QmTKsVZDPhLXFJqC87+OjocEVpvS3dA2BPPUiLAu+m0/QmEj5pSXKhH+/DgerQ==
