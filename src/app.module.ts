@@ -12,6 +12,7 @@ import { PaymentModule } from "./modules/payment_serivce/payment.module"
 import { ContactModule } from "./modules/contact-serivce/mail.module"
 import { OtpModule } from "./modules/otp_service/otp.module"
 import vnpayConfig from "./config/vnpay_config/vnpay.config"
+import { AppointmentModule } from "./appointments_service/appointment.module"
 
 
 @Module({
@@ -38,6 +39,7 @@ import vnpayConfig from "./config/vnpay_config/vnpay.config"
         HospitalModule,
         ContactModule,
         OtpModule,
+        AppointmentModule,
         PaymentModule
     ]
 })

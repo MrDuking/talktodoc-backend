@@ -197,22 +197,23 @@ export class UsersService {
         return { data: patients, total, page, limit }
     }
     //find one
-async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new BadRequestException('Invalid user ID');
-    }
+    async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+          return null;
+        }
 
-    const patient = await this.patientModel.findById(userId).exec();
-    if (patient) return patient;
+        const patient = await this.patientModel.findById(userId).lean().exec();
+        if (patient) return patient;
 
-    const doctor = await this.doctorModel.findById(userId).exec();
-    if (doctor) return doctor;
+        const doctor = await this.doctorModel.findById(userId).lean().exec();
+        if (doctor) return doctor;
 
-    const employee = await this.employeeModel.findById(userId).exec();
-    if (employee) return employee;
+        const employee = await this.employeeModel.findById(userId).lean().exec();
+        if (employee) return employee;
 
-    return null;
-  }
+        return null;
+      }
+
 
   async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
     return this.patientModel.findOne({ email }).exec();
