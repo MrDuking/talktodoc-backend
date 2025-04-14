@@ -20,6 +20,9 @@ export class Speciality {
 
     @Prop({ type: Map, of: String, default: {} })
     config?: Record<string, any>;
+
+    @Prop({ type: String, default: "" })
+    avatarUrl?: string;
 }
 
 export const SpecialitySchema = SchemaFactory.createForClass(Speciality);

@@ -1,3 +1,4 @@
+// interfaces/payment.interface.ts
 import { ApiProperty } from '@nestjs/swagger';
 
 export class PaymentUrlResponse {
@@ -6,7 +7,7 @@ export class PaymentUrlResponse {
     example:
       'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=19900000&vnp_Command=pay&...',
   })
-  paymentUrl?: string;
+  paymentUrl!: string;
 }
 
 export class PaymentVerificationResponse {
@@ -14,13 +15,13 @@ export class PaymentVerificationResponse {
     description: 'Whether the payment was successful',
     example: true,
   })
-  success?: boolean;
+  success!: boolean;
 
   @ApiProperty({
     description: 'Message describing the result',
-    example: 'Payment successful',
+    example: 'Payment successful, package upgraded to premium',
   })
-  message?: string;
+  message!: string;
 
   @ApiProperty({
     description: 'Order ID reference',
@@ -35,6 +36,7 @@ export class PaymentVerificationResponse {
   userId?: string;
 }
 
+// This interface is for internal use, doesn't need API decorations
 export interface VnpayParams {
   [key: string]: string | number;
 }

@@ -33,11 +33,12 @@ export class MedicineService {
       const id = row['ID']?.trim();
       const name = row['Name']?.trim();
       const priceRaw = row['Final Cost']?.replace('£', '').replace(',', '').trim();
-      const quantity = row['Quanitty']?.trim();
+      const quantity = row['Quanitty']?.trim(); // ⚠️ Typo: "Quanitty"
       const price = parseFloat(priceRaw || '0') * 25;
 
       if (!id || !name || !price || !quantity) {
-        errors.push({ line, reason: 'Missing fields' });
+        console.log('Thiếu cột dữ liệu', id, name, price, quantity);
+        errors.push({ line, reason: 'Thiếu cột dữ liệu' });
         continue;
       }
 
@@ -120,7 +121,7 @@ export class MedicineService {
       }
     } catch (e) {
       rows.forEach((r) => {
-        errors.push({ line: r.line, reason: 'DB error' });
+        errors.push({ line: r.line, reason: 'Lỗi hệ thống' });
       });
     }
   }

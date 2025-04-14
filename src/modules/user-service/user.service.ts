@@ -214,4 +214,8 @@ async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
     return null;
   }
 
+  async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
+    return this.patientModel.findOne({ email }).exec();
+  }
 }
+

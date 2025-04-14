@@ -1,3 +1,4 @@
+// src/payment/payment.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
@@ -11,6 +12,7 @@ import { UsersModule } from '../user-service/user.module';
 
 @Module({
   imports: [
+    // Import the model explicitly with the correct name
     MongooseModule.forFeature([
       { name: OrderMapping.name, schema: OrderMappingSchema },
     ]),
