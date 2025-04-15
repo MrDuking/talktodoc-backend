@@ -13,6 +13,7 @@ import { ContactModule } from "./modules/contact-serivce/mail.module"
 import { OtpModule } from "./modules/otp_service/otp.module"
 import vnpayConfig from "./config/vnpay_config/vnpay.config"
 import { AppointmentModule } from "./appointments_service/appointment.module"
+import { MailModule } from "./modules/mail/mail.module"
 
 
 @Module({
@@ -31,6 +32,7 @@ import { AppointmentModule } from "./appointments_service/appointment.module"
             inject: [ConfigService]
         }),
         UsersModule,
+        MailModule,
         AuthModule,
         PharmacyModule,
         SpecialityModule,

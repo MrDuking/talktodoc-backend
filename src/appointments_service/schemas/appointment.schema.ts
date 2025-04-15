@@ -1,65 +1,71 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { ApiProperty } from '@nestjs/swagger';
-
-export type AppointmentDocument = Appointment & Document;
 
 @Schema({ timestamps: true })
-export class Appointment {
-  @ApiProperty({ type: String, description: 'Reference to the patient who booked the appointment' })
+export class Appointment extends Document {
+  @Prop({ required: true, unique: true })
+  appointmentId!: string;
+
   @Prop({ type: Types.ObjectId, ref: 'Patient', required: true })
-  patient!: Types.ObjectId;
+  patient!: Types.ObjectId | any;
 
-  @ApiProperty({ type: String, description: 'Speciality selected during appointment creation' })
+  @Prop({ type: Types.ObjectId, ref: 'Doctor' })
+  doctor!: Types.ObjectId | any;
+
   @Prop({ type: Types.ObjectId, ref: 'Speciality', required: true })
-  specialty!: Types.ObjectId;
+  specialty!: Types.ObjectId | any;
 
-  @ApiProperty({
-    type: Object,
-    description: 'Response data collected from the speciality-specific medical questionnaire',
-  })
-  @Prop({ type: Object, default: {} })
-  answers_data!: Record<string, any>;
 
-  @ApiProperty({
+  @Prop({ })
+  date!: string;
+
+  @Prop({})
+  slot!: string;
+
+  @Prop({ default: 'Asia/Ho_Chi_Minh' })
+  timezone!: string;
+
+  @Prop({ type: Object })
+  medicalForm?: Record<string, any>;
+
+  @Prop({
     type: String,
-    required: false,
-    description: 'Assigned doctor for the appointment',
+    enum: ['PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED'],
+    default: 'PENDING',
   })
-  @Prop({ type: Types.ObjectId, ref: 'Doctor', default: null })
-  doctor?: Types.ObjectId;
+  status!: string;
 
-  @ApiProperty({
-    type: Date,
-    required: false,
-    description: 'UTC start time of the scheduled appointment slot',
-  })
-  @Prop({ type: Date, default: null })
-  start_time?: Date;
+  @Prop()
+  confirmedAt?: Date;
 
-  @ApiProperty({
-    type: Date,
-    required: false,
-    description: 'UTC end time of the scheduled appointment slot',
-  })
-  @Prop({ type: Date, default: null })
-  end_time?: Date;
+  @Prop()
+  cancelledAt?: Date;
 
-  @ApiProperty({
-    enum: ['PAID', 'UNPAID', null],
-    required: false,
-    description: 'Billing status of the appointment',
-  })
-  @Prop({ type: String, enum: ['PAID', 'UNPAID', null], default: null })
-  billing_status?: 'PAID' | 'UNPAID' | null;
+  @Prop()
+  doctorNote?: string;
 
-  @ApiProperty({
-    enum: ['INIT', 'ANSWERED', 'SELECTED_DOCTOR', 'PAID'],
-    default: 'INIT',
-    description: 'Current progress stage of the appointment booking flow',
+  @Prop({
+    type: Object,
+    default: {
+      platformFee: 0,
+      doctorFee: 0,
+      discount: 0,
+      total: 0,
+      status: 'UNPAID',
+      paymentMethod: '',
+    },
   })
-  @Prop({ type: String, enum: ['INIT', 'ANSWERED', 'SELECTED_DOCTOR', 'PAID'], default: 'INIT' })
-  status!: 'INIT' | 'ANSWERED' | 'SELECTED_DOCTOR' | 'PAID';
+  payment?: {
+    platformFee: number;
+    doctorFee: number;
+    discount: number;
+    total: number;
+    status: string;
+    paymentMethod?: string;
+  };
+
+  @Prop()
+  notes?: string;
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment);

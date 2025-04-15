@@ -1,4 +1,3 @@
-export * from "./CreateAppointment.dto"
-export * from "./UpdateAnswers.dto"
-export * from "./UpdateDoctorAndTime.dto"
-export * from "./UpdatePaymentStatus.dto"
+export * from "./create-appointment.dto"
+export * from "./update-appointment.dto.ts"
+
