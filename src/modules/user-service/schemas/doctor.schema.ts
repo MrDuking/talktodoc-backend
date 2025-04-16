@@ -40,6 +40,9 @@ export class Doctor extends BaseUser {
 
     @Prop({ type: Types.ObjectId, required: true, ref: "DoctorLevel" })
     rank!: Types.ObjectId
+
+    @Prop({ type: String, required: false })
+    position?: string
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)
