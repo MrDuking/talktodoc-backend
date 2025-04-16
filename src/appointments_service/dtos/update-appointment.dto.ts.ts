@@ -32,11 +32,6 @@ export class UpdateAppointmentDto {
 
     @ApiProperty({ required: false })
     @IsOptional()
-    @IsString()
-    timezone?: string
-
-    @ApiProperty({ required: false })
-    @IsOptional()
     @IsObject()
     payment?: {
         platformFee?: number
@@ -47,10 +42,10 @@ export class UpdateAppointmentDto {
         paymentMethod?: string
     }
 
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsString()
-    status?: "PENDING" | "CONFIRMED" | "CANCELLED"
+    // @ApiProperty({ required: false })
+    // @IsOptional()
+    // @IsString()
+    // status?: "PENDING" | "CONFIRMED" | "CANCELLED"
 
     @ApiProperty({ required: false })
     @IsOptional()
