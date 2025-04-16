@@ -103,6 +103,11 @@ export class CreateDoctorDto {
     @IsString()
     @IsOptional()
     rank?: string
+
+    @ApiProperty({ example: "Trưởng Phòng", description: "Doctor's position" })
+    @IsString()
+    @IsOptional()
+    position?: string
 }
 
 export class UpdateDoctorDto extends PartialType(CreateDoctorDto) {}
