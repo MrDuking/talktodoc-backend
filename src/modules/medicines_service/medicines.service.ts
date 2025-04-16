@@ -126,10 +126,23 @@ export class MedicineService {
     }
   }
 
-  async getAll(page = 1, limit = 10) {
+  async getAll(page = 1, limit = 10, keyword?: string) {
     const skip = (page - 1) * limit;
-    const data = await this.medicineModel.find().skip(skip).limit(limit);
-    const total = await this.medicineModel.countDocuments();
+    const query = keyword
+      ? {
+          $or: [
+            { id: { $regex: keyword, $options: 'i' } },
+            { name: { $regex: keyword, $options: 'i' } },
+            { quantity: { $regex: keyword, $options: 'i' } },
+          ],
+        }
+      : {};
+
+    const [data, total] = await Promise.all([
+      this.medicineModel.find(query).skip(skip).limit(limit),
+      this.medicineModel.countDocuments(query),
+    ]);
+
     return { data, total, page, limit };
   }
 

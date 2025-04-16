@@ -36,13 +36,18 @@ export class MedicineController {
         return this.medicineService.importFromCSV(file.path);
     }
 
-    @ApiOperation({ summary: "Get all medicines with pagination" })
+    @ApiOperation({ summary: "Get all medicines with pagination and optional search" })
     @ApiQuery({ name: "page", required: false, example: 1 })
     @ApiQuery({ name: "limit", required: false, example: 10 })
+    @ApiQuery({ name: "keyword", required: false, example: "Paracetamol" })
     @ApiResponse({ status: 200, description: "Return list of medicines" })
     @Get()
-    getAll(@Query("page") page = 1, @Query("limit") limit = 10) {
-        return this.medicineService.getAll(+page, +limit);
+    getAll(
+      @Query("page") page = 1,
+      @Query("limit") limit = 10,
+      @Query("keyword") keyword?: string
+    ) {
+      return this.medicineService.getAll(+page, +limit, keyword);
     }
 
     @ApiOperation({ summary: "Get import progress by task ID" })

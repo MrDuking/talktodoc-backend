@@ -22,18 +22,11 @@ async function bootstrap() {
 
 
     const config = new DocumentBuilder()
-        .setTitle("TalkToDoc API")
-        .setDescription("API documentation for TalkToDoc")
-        .setVersion("1.0")
-        .addBearerAuth(
-            {
-                type: "http",
-                scheme: "bearer",
-                bearerFormat: "JWT"
-            },
-            "access-token"
-        )
-        .build()
+    .setTitle("TalkToDoc API")
+    .setDescription("API documentation for TalkToDoc")
+    .setVersion("1.0")
+    .addBearerAuth()
+    .build();
 
     const document = SwaggerModule.createDocument(app, config)
     SwaggerModule.setup("api/docs", app, document)

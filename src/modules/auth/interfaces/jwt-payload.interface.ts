@@ -1,5 +1,5 @@
 export interface JwtPayload {
-    userId: string; // từ payload.sub
+    userId: string;
     username: string;
     role: 'PATIENT' | 'DOCTOR' | 'EMPLOYEE' | 'ADMIN';
   }

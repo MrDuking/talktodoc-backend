@@ -1,4 +1,3 @@
-// src/modules/auth/strategies/jwt.strategy.ts
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
@@ -19,10 +18,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    console.log(" JWT Payload nhận được:", payload);
+    console.log(" JWT payload:", payload);
 
     if (!payload.sub) {
-      console.error(" Thiếu `sub` trong token payload.");
+      console.error(" miss sub");
       return null;
     }
 
