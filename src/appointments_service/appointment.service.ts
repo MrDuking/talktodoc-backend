@@ -1,8 +1,8 @@
+import { MailService } from "@modules/mail/mail.service"
+import { UsersService } from "@modules/user-service/user.service"
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common"
 import { InjectModel } from "@nestjs/mongoose"
 import mongoose, { Model } from "mongoose"
-import { MailService } from "@modules/mail/mail.service"
-import { UsersService } from "@modules/user-service/user.service"
 import { CreateAppointmentDto, UpdateAppointmentDto } from "./dtos/index"
 import { Appointment } from "./schemas/appointment.schema"
 
@@ -17,16 +17,16 @@ export class AppointmentService {
         private readonly mailService: MailService
     ) {}
 
-        async create(createDto: CreateAppointmentDto) {
-            const appointmentId = await this.generateUniqueAppointmentId()
-            const appointment = new this.appointmentModel({
-                ...createDto,
-                appointmentId,
-                timezone: createDto.timezone || "Asia/Ho_Chi_Minh",
-                status: 'PENDING'
-            })
-            return appointment.save()
-        }
+    async create(createDto: CreateAppointmentDto) {
+        const appointmentId = await this.generateUniqueAppointmentId()
+        const appointment = new this.appointmentModel({
+            ...createDto,
+            appointmentId,
+            timezone: createDto.timezone || "Asia/Ho_Chi_Minh",
+            status: "PENDING"
+        })
+        return appointment.save()
+    }
 
     async findAppointments(query?: string, page = 1, limit = 10) {
         const filter: any = {}
@@ -51,29 +51,28 @@ export class AppointmentService {
 
     async findOne(id: string) {
         const appointment = await this.appointmentModel
-        .findById(id)
-        .populate('patient')
-        .populate({
-          path: 'doctor',
-          populate: ['specialty', 'rank'],
-        })
-        .populate('specialty')
-        .lean();
+            .findById(id)
+            .populate("patient")
+            .populate({
+                path: "doctor",
+                populate: ["specialty", "rank"]
+            })
+            .populate("specialty")
+            .lean()
 
-      if (!appointment) throw new NotFoundException('Appointment not found');
+        if (!appointment) throw new NotFoundException("Appointment not found")
 
-      return {
-        ...appointment,
-        booking: {
-          date: appointment.date,
-          slot: appointment.slot,
-          timezone: appointment.timezone,
-        },
-        date: undefined,
-        slot: undefined,
-        timezone: undefined,
-      };
-
+        return {
+            ...appointment,
+            booking: {
+                date: appointment.date,
+                slot: appointment.slot,
+                timezone: appointment.timezone
+            },
+            date: undefined,
+            slot: undefined,
+            timezone: undefined
+        }
     }
 
     async update(id: string, updateDto: UpdateAppointmentDto) {
@@ -91,62 +90,61 @@ export class AppointmentService {
     }
 
     async confirmAppointment(id: string, doctorId: string, note?: string) {
-        const appointment = await this.appointmentModel
-          .findById(id)
-          .populate('patient doctor specialty');
+        const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
 
-        if (!appointment) throw new NotFoundException('Appointment not found');
+        if (!appointment) throw new NotFoundException("Appointment not found")
 
-        const appointmentDoctorId =
-          appointment.doctor instanceof mongoose.Types.ObjectId
-            ? appointment.doctor.toString()
-            : appointment.doctor._id.toString();
+        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
 
         if (appointmentDoctorId !== doctorId) {
-          console.log(' Doctor in appointment:', appointmentDoctorId);
-          console.log('Logged-in doctorId:', doctorId);
-          throw new ForbiddenException('You are not the assigned doctor');
+            console.log(" Doctor in appointment:", appointmentDoctorId)
+            console.log("Logged-in doctorId:", doctorId)
+            throw new ForbiddenException("You are not the assigned doctor")
         }
 
-        if (appointment.status !== 'PENDING') {
-          throw new BadRequestException('Appointment must be in pending state');
+        if (appointment.status !== "PENDING") {
+            throw new BadRequestException("Appointment must be in pending state")
         }
 
-        appointment.status = 'CONFIRMED';
-        appointment.confirmedAt = new Date();
-        if (note) appointment.doctorNote = note;
-        await appointment.save();
+        appointment.status = "CONFIRMED"
+        appointment.confirmedAt = new Date()
+        if (note) appointment.doctorNote = note
+        await appointment.save()
 
         const patient = await this.usersService.findOneUser(
-          appointment.patient instanceof mongoose.Types.ObjectId
-            ? appointment.patient.toString()
-            : appointment.patient._id.toString()
-        );
+            appointment.patient instanceof mongoose.Types.ObjectId ? appointment.patient.toString() : appointment.patient._id.toString()
+        )
 
         if (patient?.email) {
-          await this.mailService.sendTemplateMail({
-            to: patient.email,
-            subject: 'Lịch hẹn đã được xác nhận',
-            template: 'appointment-confirm',
-            variables: {
-              name: patient.fullName,
-              doctor: appointment.doctor.fullName,
-              date: appointment.date,
-              slot: appointment.slot,
-              specialty: appointment.specialty.name,
-              note: note || '',
-            },
-          });
+            await this.mailService.sendTemplateMail({
+                to: patient.email,
+                subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
+                template: "appointment-confirm",
+                variables: {
+                    name: patient.fullName,
+                    doctor: appointment.doctor.fullName,
+                    date: appointment.date,
+                    slot: appointment.slot,
+                    specialty: appointment.specialty.name,
+                    note: note || ""
+                }
+            })
         }
 
-        return { message: 'Appointment confirmed and email sent' };
-      }
+        return { message: "Appointment confirmed and email sent" }
+    }
 
     async rejectAppointment(id: string, doctorId: string, reason: string) {
         const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
 
         if (!appointment) throw new NotFoundException("Appointment not found")
-        if (appointment.doctor.toString() !== doctorId) throw new ForbiddenException("You are not the assigned doctor")
+        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
+
+        if (appointmentDoctorId !== doctorId) {
+            console.log(" Doctor in appointment:", appointmentDoctorId)
+            console.log("Logged-in doctorId:", doctorId)
+            throw new ForbiddenException("You are not the assigned doctor")
+        }
         if (appointment.status !== "PENDING") throw new BadRequestException("Appointment must be in pending state")
 
         appointment.status = "REJECTED"

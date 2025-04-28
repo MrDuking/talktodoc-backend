@@ -223,9 +223,9 @@ export class PaymentService {
   async getSimplifiedPaymentHistory(userId: string) {
     const payments = await this.orderMappingModel
       .find({ userId })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 }) // Sắp xếp giảm dần theo thời gian tạo
       .lean()
-      .exec();
+      .exec()
 
     const userInfo = await this.usersService.findOneUser(userId);
 
