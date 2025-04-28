@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { diskStorage } from "Multer";
+import { diskStorage } from "multer";
 import { MedicineService } from "./medicines.service";
 
 @ApiTags("Medicines")
