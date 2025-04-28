@@ -9,6 +9,7 @@ import { Employee, EmployeeDocument } from "../user-service/schemas/employee.sch
 import { Patient, PatientDocument } from "../user-service/schemas/patient.schema"
 import { LoginDto } from "./dtos/login.dto"
 import { RegisterUserDto } from "./dtos/register-user.dto"
+import { StringeeService } from '../stringee-service/stringee.service';
 import { EmailOtp, EmailOtpSchema } from '../otp_service/schemas/email-otp.schema';
 
 @Injectable()
@@ -19,8 +20,9 @@ export class AuthService {
         @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
         @InjectModel(Patient.name) private patientModel: Model<PatientDocument>,
         @InjectModel(EmailOtp.name) private otpModel: Model<EmailOtp>,
-        private readonly jwtService: JwtService
-    ) {}
+        private readonly jwtService: JwtService,
+        private readonly stringeeService: StringeeService
+    ) { }
 
     async validateUser(identifier: string, password: string): Promise<any> {
         const user = await this.findUserByIdentifier(identifier)
@@ -30,7 +32,7 @@ export class AuthService {
         // if (!isMatch) throw new UnauthorizedException("Invalid password")
         if (user.password !== password) {
             throw new UnauthorizedException("Invalid password");
-          }
+        }
         const { password: _, ...result } = user
         return result
     }
@@ -58,8 +60,13 @@ export class AuthService {
     async login(loginDto: LoginDto) {
         const user = await this.validateUser(loginDto.identifier, loginDto.password)
         const payload = { username: user.username, sub: user._id, role: user.role }
+        console.log("payload", payload)
+        console.log("user", user)
+        const appAccessToken = this.jwtService.sign(payload); // Token login app
+        const stringeeAccessToken = this.stringeeService.generateClientAccessToken(user._id.toString()); // Token login stringee
         return {
-            accessToken: this.jwtService.sign(payload),
+            accessToken: appAccessToken,
+            stringeeAccessToken: stringeeAccessToken, // <-- Thêm vào response
             userProfile: {
                 _id: user._id,
                 username: user.username,
@@ -75,14 +82,14 @@ export class AuthService {
         const { username, email, phoneNumber, password } = dto;
 
         const existing = await this.patientModel.findOne({
-          $or: [{ username }, { email }, { phoneNumber }],
+            $or: [{ username }, { email }, { phoneNumber }],
         });
         if (existing) throw new UnauthorizedException('User already exists');
 
         // Kiểm tra OTP email đã được verify chưa
         const otpVerified = await this.otpModel.findOne({ email, isVerified: true });
         if (!otpVerified) {
-          throw new UnauthorizedException('Email not verified via OTP');
+            throw new UnauthorizedException('Email not verified via OTP');
         }
 
 

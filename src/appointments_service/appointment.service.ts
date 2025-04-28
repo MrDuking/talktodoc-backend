@@ -118,7 +118,7 @@ export class AppointmentService {
         if (patient?.email) {
             await this.mailService.sendTemplateMail({
                 to: patient.email,
-                subject: "Lịch hẹn đã được xác nhận",
+                subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
                 template: "appointment-confirm",
                 variables: {
                     name: patient.fullName,

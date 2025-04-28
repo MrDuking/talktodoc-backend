@@ -14,7 +14,7 @@ import { Doctor, DoctorSchema } from "../user-service/schemas/doctor.schema"
 import { Employee, EmployeeSchema } from "../user-service/schemas/employee.schema"
 import { Patient, PatientSchema } from "../user-service/schemas/patient.schema"
 import { EmailOtp, EmailOtpSchema } from "../otp_service/schemas/email-otp.schema"
-
+import { StringeeService } from "../stringee-service/stringee.service"
 @Module({
     imports: [
         ConfigModule,
@@ -36,7 +36,7 @@ import { EmailOtp, EmailOtpSchema } from "../otp_service/schemas/email-otp.schem
             { name: EmailOtp.name, schema: EmailOtpSchema }
         ])
     ],
-    providers: [AuthService, JwtStrategy, LocalStrategy],
+    providers: [AuthService, JwtStrategy, LocalStrategy, StringeeService],
     controllers: [AuthController],
     exports: [AuthService]
 })
