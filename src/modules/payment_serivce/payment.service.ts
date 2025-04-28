@@ -263,7 +263,10 @@ export class PaymentService {
 
   async getAllOrders() {
     try {
-      const orders = await this.orderMappingModel.find().exec();
+      const orders = await this.orderMappingModel
+        .find()
+        .sort({ createdAt: -1 })
+        .exec();
 
       const ordersWithUserInfo = await Promise.all(
         orders.map(async (order) => {
