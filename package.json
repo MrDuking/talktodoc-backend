@@ -71,6 +71,7 @@
         "nest-winston": "^1.9.4",
         "nestjs-grpc-reflection": "^0.0.9",
         "nodemailer": "^6.10.0",
+        "openai": "^4.96.2",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
         "passport-local": "^1.0.0",

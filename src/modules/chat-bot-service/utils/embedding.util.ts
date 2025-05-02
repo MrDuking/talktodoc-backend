@@ -1,0 +1,11 @@
+import { OpenAI } from 'openai';
+import { ConfigService } from '@nestjs/config';
+
+export async function getEmbedding(input: string, configService: ConfigService): Promise<number[]> {
+  const openai = new OpenAI({ apiKey: configService.get<string>('OPENAI_API_KEY') });
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input,
+  });
+  return response.data[0].embedding;
+}
