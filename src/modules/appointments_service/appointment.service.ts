@@ -126,7 +126,8 @@ export class AppointmentService {
                     date: appointment.date,
                     slot: appointment.slot,
                     specialty: appointment.specialty.name,
-                    note: note || ""
+                    note: note || "",
+                    link: "https://www.talktodoc.online/"
                 }
             })
         }
@@ -164,7 +165,8 @@ export class AppointmentService {
                     date: appointment.date,
                     slot: appointment.slot,
                     specialty: appointment.specialty.name,
-                    reason
+                    reason,
+                    link: "https://www.talktodoc.online/"
                 }
             })
         }
