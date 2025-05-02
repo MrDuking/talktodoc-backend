@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ChatConversation } from './schemas/chat-conversation.schema';
@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class ChatService {
   private openai: OpenAI;
+  private readonly logger = new Logger(ChatService.name);
 
   constructor(
     @InjectModel(ChatConversation.name)
@@ -63,11 +64,16 @@ export class ChatService {
         ...contextMessages,
         { role: 'user', content: dto.message }
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      max_tokens: 50
     });
 
     const reply = chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
 
+    const usage = chatResponse.usage;
+    if (usage) {
+      this.logger.log(`GPT token usage: input ${usage.prompt_tokens}, output ${usage.completion_tokens}, total ${usage.total_tokens}`);
+    }
 
     convo.messages.push({ role: 'assistant', content: reply });
     await convo.save();
