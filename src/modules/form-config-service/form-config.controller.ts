@@ -4,7 +4,7 @@ import { UpdateFormConfigDto } from "./dtos/update-form-config.dto"
 import { FormConfigService } from "./form-config.service"
 
 @ApiTags("Form Config")
-@Controller("form-config")
+@Controller("api/v1/form-config")
 export class FormConfigController {
     constructor(private readonly formConfigService: FormConfigService) {}
 
@@ -16,16 +16,15 @@ export class FormConfigController {
     @ApiResponse({ status: 400, description: "Invalid JSON format or bad request" })
     @ApiResponse({ status: 404, description: "Form config not found by given ID" })
     async update(@Param("id") id: string, @Body() dto: UpdateFormConfigDto) {
-        let parsed
+        // Optionally validate JSON
         try {
-            parsed = JSON.parse(dto.form_json)
-        } catch (e) {
+            JSON.parse(dto.general_setting) // xác nhận JSON hợp lệ
+        } catch {
             throw new BadRequestException("Invalid JSON format")
         }
 
-        return this.formConfigService.update(id, parsed)
+        return this.formConfigService.update(id, dto.general_setting)
     }
-
     @Get(":id")
     @ApiOperation({ summary: "Get the form config by ID" })
     @ApiParam({ name: "id", description: "ID of the form config document" })

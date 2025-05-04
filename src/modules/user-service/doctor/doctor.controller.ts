@@ -7,29 +7,29 @@ import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
 @Controller("api/v1/doctors")
 export class DoctorController {
     constructor(private readonly usersService: UsersService) {}
-
     @ApiOperation({ summary: "Search doctors" })
     @ApiResponse({ status: 200, description: "Return matching doctors with pagination." })
     @ApiQuery({ name: "query", required: false, description: "Search term" })
     @ApiQuery({ name: "page", required: false, example: 1 })
     @ApiQuery({ name: "limit", required: false, example: 10 })
-    @ApiQuery({ name: "sortField", required: false, example: "name" })
-    @ApiQuery({ name: "sortOrder", enum: ["asc", "desc"], required: false, example: "asc" })
+    @ApiQuery({ name: "sortField", required: false, example: "createdAt" })
+    @ApiQuery({ name: "sortOrder", enum: ["asc", "desc"], required: false, example: "desc" })
     @Get("search")
     async searchDoctors(
         @Query("query") query: string = "",
         @Query("page") page: number = 1,
         @Query("limit") limit: number = 10,
-        @Query("sortField") sortField: string = "name",
-        @Query("sortOrder") sortOrder: "asc" | "desc" = "asc"
+        @Query("sortField") sortField: string = "createdAt",
+        @Query("sortOrder") sortOrder: "asc" | "desc" = "desc"
     ) {
         return await this.usersService.searchDoctors(query, page, limit, sortField, sortOrder)
     }
+
     @ApiOperation({ summary: "Get all doctors" })
     @ApiResponse({ status: 200, description: "Return all doctors." })
     @Get()
     findAllDoctors() {
-        return this.usersService.getAllDoctors();
+        return this.usersService.getAllDoctors()
     }
 
     @ApiOperation({ summary: "Get a doctor by MongoDB _id" })

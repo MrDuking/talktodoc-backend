@@ -132,7 +132,7 @@ export class AppointmentService {
             })
         }
 
-        return { message: "Appointment confirmed and email sent" }
+        return { message: "Lịch hẹn đã được xác nhận và email đã được gửi." }
     }
 
     async rejectAppointment(id: string, doctorId: string, reason: string) {
@@ -171,7 +171,7 @@ export class AppointmentService {
             })
         }
 
-        return { message: "Appointment rejected and email sent" }
+        return { message: "Lịch hẹn đã được từ chối và email đã được gửi." }
     }
 
     private async generateUniqueAppointmentId(): Promise<string> {

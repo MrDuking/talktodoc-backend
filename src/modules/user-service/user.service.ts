@@ -202,13 +202,12 @@ export class UsersService {
           return null;
         }
 
-        const patient = await this.patientModel.findById(userId).lean().exec();
+        const patient = await this.patientModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
         if (patient) return patient;
-
-        const doctor = await this.doctorModel.findById(userId).lean().exec();
+        const doctor = await this.doctorModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
         if (doctor) return doctor;
 
-        const employee = await this.employeeModel.findById(userId).lean().exec();
+        const employee = await this.employeeModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
         if (employee) return employee;
 
         return null;
