@@ -9,8 +9,7 @@ class GeneralSetting {
 
 @Schema()
 export class FormConfig extends Document {
-  @Prop({ type: GeneralSetting, required: true })
-  general_setting!: GeneralSetting;
+  @Prop({ type: String, required: true }) // ✅ Lưu raw JSON string
+  general_setting!: string;
 }
-
 export const FormConfigSchema = SchemaFactory.createForClass(FormConfig);
