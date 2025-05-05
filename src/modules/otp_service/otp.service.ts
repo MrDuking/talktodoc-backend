@@ -43,19 +43,19 @@ export class OtpService {
       `
         })
 
-        return { message: "OTP sent to your email" }
+        return { message: "OTP đã được gửi đến email của bạn" }
     }
 
     async verifyOtp(email: string, otp: string) {
         const record = await this.otpModel.findOne({ email, otp })
 
-        if (!record) throw new BadRequestException("Invalid OTP")
-        if (record.isVerified) throw new BadRequestException("OTP already used")
-        if (record.expiresAt < new Date()) throw new BadRequestException("OTP expired")
+        if (!record) throw new BadRequestException("OTP Không hợp lệ")
+        if (record.isVerified) throw new BadRequestException("OTP đã được sử dụng")
+        if (record.expiresAt < new Date()) throw new BadRequestException("OTP đã hết hạn")
 
         record.isVerified = true
         await record.save()
 
-        return { message: "OTP verified successfully" }
+        return { message: "OTP đã được xác thực thành công" }
     }
 }
