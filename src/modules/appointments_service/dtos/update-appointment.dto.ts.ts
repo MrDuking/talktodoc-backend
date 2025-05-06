@@ -49,6 +49,12 @@ export class UpdateAppointmentDto {
 
     @ApiProperty({ required: false })
     @IsOptional()
+    @IsMongoId()
+    specialty?: string
+
+    @IsOptional()
+    @ApiProperty({ required: false })
+    @IsOptional()
     @IsString()
     notes?: string
 }

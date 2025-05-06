@@ -48,9 +48,15 @@ export class UsersService {
     } // ===================== API CHO DOCTOR =====================
 
     async getAllDoctors(): Promise<Doctor[]> {
+        
         return this.doctorModel.find().populate("specialty").populate("rank").populate("hospital").exec()
     }
-
+    async migrateDefaultRegistrationStatus(): Promise<void> {
+        await this.doctorModel.updateMany(
+          { registrationStatus: { $exists: true } },
+          { $set: { registrationStatus: 'approved' } }
+        );
+      }
     async getDoctorById(id: string): Promise<Doctor> {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             throw new BadRequestException("Invalid doctor ID format")

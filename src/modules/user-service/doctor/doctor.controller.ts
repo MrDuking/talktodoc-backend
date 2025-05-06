@@ -2,7 +2,6 @@ import { Body, Query, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { UsersService } from "../user.service";
 import { CreateDoctorDto, UpdateDoctorDto } from "../dtos/index";
-
 @ApiTags("doctors")
 @Controller("api/v1/doctors")
 export class DoctorController {
@@ -30,6 +29,13 @@ export class DoctorController {
     @Get()
     findAllDoctors() {
         return this.usersService.getAllDoctors()
+    }
+
+    @ApiOperation({ summary: "Migrate default registration status" })
+    @ApiResponse({ status: 200, description: "Registration status migrated successfully." })
+    @Get("migrate-registration-status")
+    migrateRegistrationStatus() {
+        return this.usersService.migrateDefaultRegistrationStatus()
     }
 
     @ApiOperation({ summary: "Get a doctor by MongoDB _id" })

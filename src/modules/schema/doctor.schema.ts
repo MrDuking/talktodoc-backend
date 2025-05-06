@@ -6,6 +6,13 @@ import { BaseUser } from "./base-user.schema"
 export type DoctorDocument = Doctor & Document
 export type DoctorModel = Model<DoctorDocument>
 
+export enum DoctorRegistrationStatus {
+    PENDING = "pending",
+    APPROVED = "approved",
+    REJECTED = "rejected",
+    UPDATING = "updating"
+}
+
 @Schema()
 class Availability {
     @Prop({ required: true })
@@ -18,7 +25,7 @@ class Availability {
 @Schema({ timestamps: true })
 export class Doctor extends BaseUser {
     @Prop({ unique: true })
-    id!: string 
+    id!: string
 
     @Prop({ default: UserRole.DOCTOR })
     role!: UserRole
@@ -43,6 +50,14 @@ export class Doctor extends BaseUser {
 
     @Prop({ type: String, required: false })
     position?: string
+
+    @Prop({ type: String, enum: DoctorRegistrationStatus, required: false, default: DoctorRegistrationStatus.PENDING })
+    registrationStatus?: DoctorRegistrationStatus
+
+    @Prop({ type: Object, required: false })
+    wallet?: {
+        balance: number
+    }
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)

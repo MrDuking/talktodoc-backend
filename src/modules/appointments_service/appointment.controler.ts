@@ -3,7 +3,7 @@ import { JwtAuthGuard } from "@/modules/auth/guards/jwt-auth.guard"
 import { RolesGuard } from "@/modules/auth/guards/roles.guard"
 import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface"
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UnauthorizedException, UseGuards } from "@nestjs/common"
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger"
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger"
 import { Request } from "express"
 import { AppointmentService } from "./appointment.service"
 import { CreateAppointmentDto, UpdateAppointmentDto } from "./dtos/index"
@@ -38,6 +38,13 @@ export class AppointmentController {
         return this.appointmentService.findAppointments(q, +page, +limit)
     }
 
+    @Get("migrate-speciality")
+    @ApiOperation({ summary: "Migrate default speciality" })
+    @ApiResponse({ status: 200, description: "Speciality migrated successfully." })
+    migrateSpeciality() {
+        return this.appointmentService.migrateDefaultStatus()
+    }
+    
     @Get(":id")
     @ApiOperation({ summary: "View appointment details" })
     async findOne(@Param("id") id: string) {

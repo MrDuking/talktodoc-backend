@@ -16,6 +16,9 @@ export class AppointmentService {
         private readonly usersService: UsersService,
         private readonly mailService: MailService
     ) {}
+    async migrateDefaultStatus(): Promise<void> {
+        await this.appointmentModel.updateMany({ status: { $exists: true } }, { $set: { status: "PENDING" } })
+    }
 
     async create(createDto: CreateAppointmentDto) {
         const appointmentId = await this.generateUniqueAppointmentId()
@@ -39,7 +42,12 @@ export class AppointmentService {
         const data = await this.appointmentModel
             .find(filter)
             .populate("patient")
-            .populate("doctor")
+            .populate({
+                path: "doctor",
+                populate: {
+                    path: "specialty"
+                }
+            })
             .populate("specialty")
             .skip((page - 1) * limit)
             .limit(limit)
@@ -60,7 +68,7 @@ export class AppointmentService {
             .populate("specialty")
             .lean()
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
 
         return {
             ...appointment,
@@ -79,31 +87,37 @@ export class AppointmentService {
         const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, {
             new: true
         })
-        if (!updated) throw new NotFoundException("Appointment not found")
+        if (!updated) throw new NotFoundException("Không tìm thấy lịch hẹn ")
         return updated
     }
 
     async remove(id: string) {
         const deleted = await this.appointmentModel.findByIdAndDelete(id)
-        if (!deleted) throw new NotFoundException("Appointment not found")
+        if (!deleted) throw new NotFoundException("Không tìm thấy lịch hẹn ")
         return { message: "Deleted successfully" }
     }
 
     async confirmAppointment(id: string, doctorId: string, note?: string) {
-        const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
+        const appointment = await this.appointmentModel
+            .findById(id)
+            .populate("patient")
+            .populate({
+                path: "doctor",
+                populate: {
+                    path: "specialty"
+                }
+            })
+            .populate("specialty")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
-
-        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
-
-        if (appointmentDoctorId !== doctorId) {
-            console.log(" Doctor in appointment:", appointmentDoctorId)
+        if (appointment?.doctor?._id?.toString() !== doctorId) {
+            console.log(" Doctor in appointment:", appointment?.doctor?._id?.toString())
             console.log("Logged-in doctorId:", doctorId)
-            throw new ForbiddenException("You are not the assigned doctor")
+            throw new Error("Bạn không phải là bác sĩ được giao")
         }
 
         if (appointment.status !== "PENDING") {
-            throw new BadRequestException("Appointment must be in pending state")
+            throw new BadRequestException("Lịch hẹn không đang ở trạng thái chờ")
         }
 
         appointment.status = "CONFIRMED"
@@ -111,21 +125,18 @@ export class AppointmentService {
         if (note) appointment.doctorNote = note
         await appointment.save()
 
-        const patient = await this.usersService.findOneUser(
-            appointment.patient instanceof mongoose.Types.ObjectId ? appointment.patient.toString() : appointment.patient._id.toString()
-        )
-
-        if (patient?.email) {
+        const patient = await this.appointmentModel.findById(id).populate("patient")
+        if (patient?.patient?.email) {
             await this.mailService.sendTemplateMail({
-                to: patient.email,
+                to: patient.patient.email,
                 subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
                 template: "appointment-confirm",
                 variables: {
-                    name: patient.fullName,
-                    doctor: appointment.doctor.fullName,
+                    name: patient.patient.fullName,
+                    doctor: appointment?.doctor?.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
-                    specialty: appointment.specialty.name,
+                    specialty: appointment?.specialty?.name,
                     note: note || "",
                     link: "https://www.talktodoc.online/"
                 }
@@ -136,10 +147,19 @@ export class AppointmentService {
     }
 
     async rejectAppointment(id: string, doctorId: string, reason: string) {
-        const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
+        const appointment = await this.appointmentModel
+            .findById(id)
+            .populate("patient")
+            .populate({
+                path: "doctor",
+                populate: {
+                    path: "specialty"
+                }
+            })
+            .populate("specialty")
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
-        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
+        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment?.doctor?.toString() : appointment?.doctor?._id.toString()
 
         if (appointmentDoctorId !== doctorId) {
             console.log(" Doctor in appointment:", appointmentDoctorId)
@@ -164,7 +184,6 @@ export class AppointmentService {
                     doctor: appointment.doctor.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
-                    specialty: appointment.specialty.name,
                     reason,
                     link: "https://www.talktodoc.online/"
                 }
