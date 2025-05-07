@@ -140,14 +140,14 @@ export class AppointmentService {
         if (appointment?.doctor?.email) {
             await this.mailService.sendTemplateMail({
                 to: appointment.doctor.email,
-                subject: "Bạn vừa từ chối một lịch hẹn",
-                template: "doctor-reject",
+                subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
+                template: "doctor-confirm",
                 variables: {
                     name: appointment.doctor.fullName,
                     patient: appointment.patient.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
-                    note: reason,
+                    note: note || "",
                     link: "https://www.talktodoc.online/"
                 }
             })
