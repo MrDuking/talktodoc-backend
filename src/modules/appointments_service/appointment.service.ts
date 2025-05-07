@@ -125,7 +125,7 @@ export class AppointmentService {
             await this.mailService.sendTemplateMail({
                 to: patient.patient.email,
                 subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
-                template: "appointment-confirm",
+                template: "appointment-confirm-patient",
                 variables: {
                     name: patient.patient.fullName,
                     doctor: appointment?.doctor?.fullName,
@@ -191,7 +191,7 @@ export class AppointmentService {
         if (patient?.email) {
             await this.mailService.sendTemplateMail({
                 to: patient.email,
-                subject: "Lịch hẹn bị từ chối",
+                subject: "TalkToDoc : Lịch hẹn bị từ chối",
                 template: "appointment-reject-patient",
                 variables: {
                     name: patient.fullName,
@@ -208,7 +208,7 @@ export class AppointmentService {
         if (doctor?.email) {
             await this.mailService.sendTemplateMail({
                 to: doctor.email,
-                subject: "Bạn đã từ chối một lịch hẹn",
+                subject: "TalkToDoc : Bạn đã từ chối một lịch hẹn",
                 template: "appointment-reject-doctor",
                 variables: {
                     name: doctor.fullName,
