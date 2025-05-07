@@ -38,10 +38,10 @@ export class AppointmentController {
         return this.appointmentService.findAppointments(q, +page, +limit)
     }
 
-    @Get("migrate-status")
-    @ApiOperation({ summary: "Migrate default status" })
-    @ApiResponse({ status: 200, description: "Status migrated successfully." })
-    migrateStatus() {
+    @Get("migrate-speciality")
+    @ApiOperation({ summary: "Migrate default speciality" })
+    @ApiResponse({ status: 200, description: "Speciality migrated successfully." })
+    migrateSpeciality() {
         return this.appointmentService.migrateDefaultStatus()
     }
     

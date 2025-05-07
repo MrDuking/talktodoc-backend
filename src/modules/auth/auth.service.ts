@@ -60,13 +60,13 @@ export class AuthService {
             role
         })
 
-        const doctor = await this.doctorModel.findOne(matchFields).select('+password').populate(populateFields).lean().exec()
+        const doctor = await this.doctorModel.findOne(matchFields).populate(populateFields).lean().exec()
         if (doctor) return attachDefaults(doctor, "DOCTOR")
 
-        const employee = await this.employeeModel.findOne(matchFields).select('+password').populate(populateFields).lean().exec()
+        const employee = await this.employeeModel.findOne(matchFields).populate(populateFields).lean().exec()
         if (employee) return attachDefaults(employee, "EMPLOYEE")
 
-        const patient = await this.patientModel.findOne(matchFields).select('+password').lean().exec()
+        const patient = await this.patientModel.findOne(matchFields).lean().exec()
         if (patient) return attachDefaults(patient, "PATIENT")
 
         return null

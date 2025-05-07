@@ -48,7 +48,7 @@ export class AppointmentService {
                     path: "specialty"
                 }
             })
-            // .populate("specialty")
+            .populate("specialty")
             .skip((page - 1) * limit)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -94,7 +94,7 @@ export class AppointmentService {
     async remove(id: string) {
         const deleted = await this.appointmentModel.findByIdAndDelete(id)
         if (!deleted) throw new NotFoundException("Không tìm thấy lịch hẹn ")
-        return { message: "Lịch hẹn đã được xóa" }
+        return { message: "Deleted successfully" }
     }
 
     async confirmAppointment(id: string, doctorId: string, note?: string) {
@@ -111,7 +111,9 @@ export class AppointmentService {
         if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
 
         if (appointment?.doctor?._id?.toString() !== doctorId) {
-            throw new Error("Bạn không phải là bác sĩ được đặt lịch hẹn")
+            console.log(" Doctor in appointment:", appointment?.doctor?._id?.toString())
+            console.log("Logged-in doctorId:", doctorId)
+            throw new Error("Bạn không phải là bác sĩ được giao")
         }
 
         if (appointment.status !== "PENDING") {
@@ -140,22 +142,7 @@ export class AppointmentService {
                 }
             })
         }
-        if (appointment?.doctor?.email) {
-            await this.mailService.sendTemplateMail({
-                to: appointment.doctor.email,
-                subject: "Bạn vừa từ chối một lịch hẹn",
-                template: "doctor-reject",
-                variables: {
-                    name: appointment.doctor.fullName,
-                    patient: appointment.patient.fullName,
-                    date: appointment.date,
-                    slot: appointment.slot,
-                    note: reason,
-                    link: "https://www.talktodoc.online/"
-                }
-            })
-            console.log("Email đã được gửi cho bác sĩ")
-        }
+
         return { message: "Lịch hẹn đã được xác nhận và email đã được gửi." }
     }
 
@@ -201,24 +188,8 @@ export class AppointmentService {
                     link: "https://www.talktodoc.online/"
                 }
             })
-            console.log("Email đã được gửi cho bệnh nhân")
         }
-        if (appointment?.doctor?.email) {
-            await this.mailService.sendTemplateMail({
-                to: appointment.doctor.email,
-                subject: "Bạn vừa từ chối một lịch hẹn",
-                template: "doctor-reject",
-                variables: {
-                    name: appointment.doctor.fullName,
-                    patient: appointment.patient.fullName,
-                    date: appointment.date,
-                    slot: appointment.slot,
-                    note: reason,
-                    link: "https://www.talktodoc.online/"
-                }
-            })
-            console.log("Email đã được gửi cho bác sĩ")
-        }
+
         return { message: "Lịch hẹn đã được từ chối và email đã được gửi." }
     }
 
