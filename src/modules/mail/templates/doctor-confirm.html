@@ -1,0 +1,21 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+  <h2 style="color: #2E86C1;">Bạn đã xác nhận một lịch hẹn</h2>
+  <p>Xin chào <strong>{{name}}</strong>,</p>
+
+  <p>Bạn vừa xác nhận lịch hẹn với bệnh nhân <strong>{{patient}}</strong>.</p>
+
+  <ul style="padding-left: 20px;">
+    <li><strong>Ngày khám:</strong> {{date}}</li>
+    <li><strong>Giờ khám:</strong> {{slot}}</li>
+    <li><strong>Chuyên khoa:</strong> {{specialty}}</li>
+    {{#if note}}
+    <li><strong>Ghi chú của bạn:</strong> {{note}}</li>
+    {{/if}}
+  </ul>
+
+  <p>Thông tin này đã được gửi đến bệnh nhân. Vui lòng có mặt đúng giờ và chuẩn bị cho buổi khám.</p>
+  <p>Xem chi tiết tại: <a href="{{link}}" target="_blank">{{link}}</a></p>
+
+  <hr />
+  <p style="font-size: 12px; color: #888;">Email này được gửi tự động bởi hệ thống TalkToDoc. Vui lòng không trả lời.</p>
+</div>
