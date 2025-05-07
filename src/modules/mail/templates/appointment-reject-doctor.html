@@ -1,0 +1,20 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+    <h2 style="color: #C0392B;">Bạn đã từ chối lịch hẹn</h2>
+    <p>Xin chào <strong>{{name}}</strong>,</p>
+
+    <p>Bạn đã từ chối lịch hẹn với bệnh nhân <strong>{{patient}}</strong>.</p>
+
+    <ul style="padding-left: 20px;">
+      <li><strong>Ngày khám:</strong> {{date}}</li>
+      <li><strong>Giờ khám:</strong> {{slot}}</li>
+      <li><strong>Chuyên khoa:</strong> {{specialty}}</li>
+      {{#if reason}}
+      <li><strong>Lý do từ chối:</strong> {{reason}}</li>
+      {{/if}}
+    </ul>
+
+    <p>Lịch hẹn đã được hủy thành công trong hệ thống TalkToDoc.</p>
+    <p>Xem chi tiết tại: <a href="{{link}}" target="_blank">{{link}}</a></p>
+    <hr />
+    <p style="font-size: 12px; color: #888;">Email này được gửi tự động. Vui lòng không trả lời.</p>
+  </div>

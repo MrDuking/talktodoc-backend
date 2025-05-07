@@ -3,6 +3,13 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose"
 import { Document, Model, Types } from "mongoose"
 import { BaseUser } from "./base-user.schema"
 
+export enum DoctorRegistrationStatus {
+    PENDING = "pending",
+    APPROVED = "approved",
+    REJECTED = "rejected", 
+    UPDATING = "updating"
+}
+
 export type DoctorDocument = Doctor & Document
 export type DoctorModel = Model<DoctorDocument>
 
@@ -43,6 +50,9 @@ export class Doctor extends BaseUser {
 
     @Prop({ type: String, required: false })
     position?: string
+
+    @Prop({ type: String, enum: DoctorRegistrationStatus, required: false, default: DoctorRegistrationStatus.APPROVED })
+    registrationStatus?: DoctorRegistrationStatus
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)

@@ -5,6 +5,7 @@ import { InjectModel } from "@nestjs/mongoose"
 import mongoose, { Model } from "mongoose"
 import { CreateAppointmentDto, UpdateAppointmentDto } from "./dtos/index"
 import { Appointment } from "./schemas/appointment.schema"
+import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface"
 
 @Injectable()
 export class AppointmentService {
@@ -17,6 +18,10 @@ export class AppointmentService {
         private readonly mailService: MailService
     ) {}
 
+    async migrateDefaultStatus(): Promise<void> {
+        await this.appointmentModel.updateMany({ status: { $exists: true } }, { $set: { status: "PENDING" } })
+    }
+
     async create(createDto: CreateAppointmentDto) {
         const appointmentId = await this.generateUniqueAppointmentId()
         const appointment = new this.appointmentModel({
@@ -28,7 +33,7 @@ export class AppointmentService {
         return appointment.save()
     }
 
-    async findAppointments(query?: string, page = 1, limit = 10) {
+    async findAppointments(user: JwtPayload, query?: string, page = 1, limit = 10) {
         const filter: any = {}
         if (query) {
             const regex = { $regex: query, $options: "i" }
@@ -39,8 +44,11 @@ export class AppointmentService {
         const data = await this.appointmentModel
             .find(filter)
             .populate("patient")
-            .populate("doctor")
-            .populate("specialty")
+            .populate({
+                path: "doctor",
+                populate: { path: "specialty" }
+            })
+            // .populate("specialty")
             .skip((page - 1) * limit)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -60,7 +68,7 @@ export class AppointmentService {
             .populate("specialty")
             .lean()
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
 
         return {
             ...appointment,
@@ -76,34 +84,35 @@ export class AppointmentService {
     }
 
     async update(id: string, updateDto: UpdateAppointmentDto) {
-        const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, {
-            new: true
-        })
-        if (!updated) throw new NotFoundException("Appointment not found")
+        const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, { new: true })
+        if (!updated) throw new NotFoundException("Không tìm thấy lịch hẹn")
         return updated
     }
 
     async remove(id: string) {
         const deleted = await this.appointmentModel.findByIdAndDelete(id)
-        if (!deleted) throw new NotFoundException("Appointment not found")
-        return { message: "Deleted successfully" }
+        if (!deleted) throw new NotFoundException("Không tìm thấy lịch hẹn ")
+        return { message: "Lịch hẹn đã được xóa" }
     }
 
     async confirmAppointment(id: string, doctorId: string, note?: string) {
-        const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
+        const appointment = await this.appointmentModel
+            .findById(id)
+            .populate("patient")
+            .populate({
+                path: "doctor",
+                populate: { path: "specialty" }
+            })
+            .populate("specialty")
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
 
-        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
-
-        if (appointmentDoctorId !== doctorId) {
-            console.log(" Doctor in appointment:", appointmentDoctorId)
-            console.log("Logged-in doctorId:", doctorId)
-            throw new ForbiddenException("You are not the assigned doctor")
+        if (appointment?.doctor?._id?.toString() !== doctorId) {
+            throw new Error("Bạn không phải là bác sĩ được đặt lịch hẹn")
         }
 
         if (appointment.status !== "PENDING") {
-            throw new BadRequestException("Appointment must be in pending state")
+            throw new BadRequestException("Lịch hẹn không đang ở trạng thái chờ")
         }
 
         appointment.status = "CONFIRMED"
@@ -111,64 +120,108 @@ export class AppointmentService {
         if (note) appointment.doctorNote = note
         await appointment.save()
 
-        const patient = await this.usersService.findOneUser(
-            appointment.patient instanceof mongoose.Types.ObjectId ? appointment.patient.toString() : appointment.patient._id.toString()
-        )
-
-        if (patient?.email) {
+        const patient = await this.appointmentModel.findById(id).populate("patient")
+        if (patient?.patient?.email) {
             await this.mailService.sendTemplateMail({
-                to: patient.email,
+                to: patient.patient.email,
                 subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
-                template: "appointment-confirm",
+                template: "appointment-confirm-patient",
                 variables: {
-                    name: patient.fullName,
-                    doctor: appointment.doctor.fullName,
+                    name: patient.patient.fullName,
+                    doctor: appointment?.doctor?.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
-                    specialty: appointment.specialty.name,
+                    specialty: appointment?.specialty?.name,
                     note: note || "",
                     link: "https://www.talktodoc.online/"
                 }
             })
         }
-
+        if (appointment?.doctor?.email) {
+            await this.mailService.sendTemplateMail({
+                to: appointment.doctor.email,
+                subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
+                template: "doctor-confirm",
+                variables: {
+                    name: appointment.doctor.fullName,
+                    patient: appointment.patient.fullName,
+                    date: appointment.date,
+                    slot: appointment.slot,
+                    note: note || "",
+                    link: "https://www.talktodoc.online/"
+                }
+            })
+            console.log("Email đã được gửi cho bác sĩ")
+        }
         return { message: "Lịch hẹn đã được xác nhận và email đã được gửi." }
     }
 
     async rejectAppointment(id: string, doctorId: string, reason: string) {
-        const appointment = await this.appointmentModel.findById(id).populate("patient doctor specialty")
+        const appointment = await this.appointmentModel
+            .findById(id)
+            .populate("patient")
+            .populate({
+                path: "doctor",
+                populate: { path: "specialty" }
+            })
+            .populate("specialty")
 
-        if (!appointment) throw new NotFoundException("Appointment not found")
-        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment.doctor.toString() : appointment.doctor._id.toString()
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
+
+        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId
+            ? appointment.doctor.toString()
+            : appointment.doctor._id.toString()
 
         if (appointmentDoctorId !== doctorId) {
-            console.log(" Doctor in appointment:", appointmentDoctorId)
-            console.log("Logged-in doctorId:", doctorId)
-            throw new ForbiddenException("You are not the assigned doctor")
+            throw new ForbiddenException("Bạn không phải là bác sĩ được giao")
         }
-        if (appointment.status !== "PENDING") throw new BadRequestException("Appointment must be in pending state")
+
+        if (appointment.status !== "PENDING") {
+            throw new BadRequestException("Lịch hẹn không đang ở trạng thái chờ")
+        }
 
         appointment.status = "REJECTED"
         appointment.cancelledAt = new Date()
         appointment.doctorNote = reason
         await appointment.save()
 
-        const patient = await this.usersService.findOneUser(appointment.patient.toString())
+        // ✅ Lấy lại thông tin patient từ appointment đã populate
+        const patient = appointment.patient
+
+        // ✅ Gửi email cho bệnh nhân
         if (patient?.email) {
             await this.mailService.sendTemplateMail({
                 to: patient.email,
-                subject: "Lịch hẹn bị từ chối",
-                template: "appointment-reject",
+                subject: "TalkToDoc : Lịch hẹn bị từ chối",
+                template: "appointment-reject-patient",
                 variables: {
                     name: patient.fullName,
                     doctor: appointment.doctor.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
-                    specialty: appointment.specialty.name,
+                    specialty: appointment.specialty?.name,
                     reason,
                     link: "https://www.talktodoc.online/"
                 }
             })
+        }
+
+        // ✅ Chỉ gửi 1 email cho bác sĩ với template 'doctor-reject'
+        if (appointment?.doctor?.email) {
+            await this.mailService.sendTemplateMail({
+                to: appointment.doctor.email,
+                subject: "Bạn vừa từ chối một lịch hẹn",
+                template: "doctor-reject",
+                variables: {
+                    name: appointment.doctor.fullName,
+                    patient: patient?.fullName,
+                    date: appointment.date,
+                    slot: appointment.slot,
+                    note: reason,
+                    link: "https://www.talktodoc.online/"
+                }
+            })
+            console.log("Email đã được gửi cho bác sĩ")
         }
 
         return { message: "Lịch hẹn đã được từ chối và email đã được gửi." }

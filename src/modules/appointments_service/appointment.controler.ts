@@ -2,8 +2,21 @@ import { Roles } from "@/modules/auth/decorators/roles.decorator"
 import { JwtAuthGuard } from "@/modules/auth/guards/jwt-auth.guard"
 import { RolesGuard } from "@/modules/auth/guards/roles.guard"
 import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface"
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UnauthorizedException, UseGuards } from "@nestjs/common"
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger"
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    Param,
+    Patch,
+    Post,
+    Query,
+    Req,
+    UnauthorizedException,
+    UseGuards
+} from "@nestjs/common"
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger"
 import { Request } from "express"
 import { AppointmentService } from "./appointment.service"
 import { CreateAppointmentDto, UpdateAppointmentDto } from "./dtos/index"
@@ -18,8 +31,6 @@ export class AppointmentController {
     @Post()
     @ApiOperation({ summary: "Create a new appointment" })
     async create(@Body() dto: CreateAppointmentDto, @Req() req: Request & { user?: JwtPayload }) {
-        console.log(" User từ token:", req.user)
-
         const patientId = req.user?.userId
         if (!patientId) throw new UnauthorizedException("Patient not found in token")
 
@@ -34,8 +45,22 @@ export class AppointmentController {
     @ApiQuery({ name: "q", required: false, description: "Search keyword" })
     @ApiQuery({ name: "page", required: false, description: "Page number" })
     @ApiQuery({ name: "limit", required: false, description: "Items per page" })
-    async findAll(@Query("q") q?: string, @Query("page") page = 1, @Query("limit") limit = 10) {
-        return this.appointmentService.findAppointments(q, +page, +limit)
+    async findAll(
+        @Req() req: Request & { user?: JwtPayload },
+        @Query("q") q?: string,
+        @Query("page") page = 1,
+        @Query("limit") limit = 10
+    ) {
+        const user = req.user
+        if (!user) throw new UnauthorizedException("Token không hợp lệ")
+        return this.appointmentService.findAppointments(user, q, +page, +limit)
+    }
+
+    @Get("migrate-speciality")
+    @ApiOperation({ summary: "Migrate default status to PENDING" })
+    @ApiResponse({ status: 200, description: "Status migrated successfully." })
+    migrateSpeciality() {
+        return this.appointmentService.migrateDefaultStatus()
     }
 
     @Get(":id")
@@ -61,7 +86,11 @@ export class AppointmentController {
     @ApiOperation({ summary: "Doctor confirms the appointment" })
     @UseGuards(RolesGuard)
     @Roles("DOCTOR")
-    async confirm(@Param("id") id: string, @Req() req: Request & { user?: JwtPayload }, @Body("note") note?: string) {
+    async confirm(
+        @Param("id") id: string,
+        @Req() req: Request & { user?: JwtPayload },
+        @Body("note") note?: string
+    ) {
         const doctorId = req.user?.userId
         if (!doctorId) throw new UnauthorizedException("Doctor not authenticated")
         return this.appointmentService.confirmAppointment(id, doctorId, note)
@@ -71,7 +100,11 @@ export class AppointmentController {
     @ApiOperation({ summary: "Doctor rejects the appointment" })
     @UseGuards(RolesGuard)
     @Roles("DOCTOR")
-    async reject(@Param("id") id: string, @Req() req: Request & { user?: JwtPayload }, @Body("reason") reason: string) {
+    async reject(
+        @Param("id") id: string,
+        @Req() req: Request & { user?: JwtPayload },
+        @Body("reason") reason: string
+    ) {
         const doctorId = req.user?.userId
         if (!doctorId) throw new UnauthorizedException("Doctor not authenticated")
         return this.appointmentService.rejectAppointment(id, doctorId, reason)
