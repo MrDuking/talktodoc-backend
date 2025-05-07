@@ -47,7 +47,7 @@ export class MailService {
         success: true,
       });
 
-      this.logger.log(`✅ Email sent to ${to} | Template: ${template}`);
+      this.logger.log(` Email sent to ${to} | Template: ${template}`);
     } catch (error: unknown) {
       this.logger.error(`Failed to send email to ${to}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
@@ -65,7 +65,7 @@ export class MailService {
 
   // read and render conetent template HTML
   private renderTemplate(templateName: string, variables: Record<string, any>): string {
-    const filePath = path.join(__dirname, 'templates', `${templateName}.html`);
+    const filePath = path.join(process.cwd(), 'src', 'modules', 'mail', 'templates', `${templateName}.html`)
 
     if (!fs.existsSync(filePath)) {
       throw new Error(`Template "${templateName}" not found`);

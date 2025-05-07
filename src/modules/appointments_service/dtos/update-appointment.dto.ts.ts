@@ -47,10 +47,10 @@ export class UpdateAppointmentDto {
     // @IsString()
     // status?: "PENDING" | "CONFIRMED" | "CANCELLED"
 
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsMongoId()
-    specialty?: string
+    // @ApiProperty({ required: false })
+    // @IsOptional()
+    // @IsMongoId()
+    // specialty?: string
 
     @IsOptional()
     @ApiProperty({ required: false })
