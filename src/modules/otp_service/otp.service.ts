@@ -19,7 +19,7 @@ export class OtpService {
 
     async sendOtp(email: string) {
         const otp = randomInt(100000, 999999).toString()
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
+        const expiresAt = new Date(Date.now() + 1 * 60 * 1000)
 
         await this.otpModel.findOneAndUpdate({ email }, { email, otp, expiresAt, isVerified: false }, { upsert: true, new: true })
 
@@ -27,7 +27,7 @@ export class OtpService {
             from: `"TalkToDoc Support" <${process.env.MAIL_USER}>`,
             to: email,
             subject: "Mã xác thực OTP - TalkToDoc",
-            text: `Xin chào,\n\nMã xác thực OTP của bạn là: ${otp}\nMã này có hiệu lực trong vòng 5 phút.\n\nNếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.\n\nTrân trọng,\nĐội ngũ TalkToDoc`,
+            text: `Xin chào,\n\nMã xác thực OTP của bạn là: ${otp}\nMã này có hiệu lực trong vòng 1 phút.\n\nNếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.\n\nTrân trọng,\nĐội ngũ TalkToDoc`,
             html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd;">
           <h2 style="color: #2E86C1;">Xác thực đăng ký tài khoản</h2>
@@ -35,7 +35,7 @@ export class OtpService {
           <p>Chúng tôi đã nhận được yêu cầu xác minh địa chỉ email của bạn trên <strong>TalkToDoc</strong>.</p>
           <p style="font-size: 18px;">Mã OTP của bạn là:</p>
           <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; margin: 16px 0;">${otp}</div>
-          <p>Mã này sẽ hết hạn sau <strong>5 phút</strong>. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
+          <p>Mã này sẽ hết hạn sau <strong>1 phút</strong>. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
           <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email.</p>
           <hr />
           <p style="font-size: 12px; color: #888;">© ${new Date().getFullYear()} TalkToDoc. All rights reserved.</p>

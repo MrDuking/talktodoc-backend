@@ -5,6 +5,7 @@ import { InjectModel } from "@nestjs/mongoose"
 import mongoose, { Model } from "mongoose"
 import { CreateAppointmentDto, UpdateAppointmentDto } from "./dtos/index"
 import { Appointment } from "./schemas/appointment.schema"
+import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface"
 
 @Injectable()
 export class AppointmentService {
@@ -16,6 +17,7 @@ export class AppointmentService {
         private readonly usersService: UsersService,
         private readonly mailService: MailService
     ) {}
+
     async migrateDefaultStatus(): Promise<void> {
         await this.appointmentModel.updateMany({ status: { $exists: true } }, { $set: { status: "PENDING" } })
     }
@@ -31,7 +33,7 @@ export class AppointmentService {
         return appointment.save()
     }
 
-    async findAppointments(query?: string, page = 1, limit = 10) {
+    async findAppointments(user: JwtPayload, query?: string, page = 1, limit = 10) {
         const filter: any = {}
         if (query) {
             const regex = { $regex: query, $options: "i" }
@@ -44,9 +46,7 @@ export class AppointmentService {
             .populate("patient")
             .populate({
                 path: "doctor",
-                populate: {
-                    path: "specialty"
-                }
+                populate: { path: "specialty" }
             })
             .populate("specialty")
             .skip((page - 1) * limit)
@@ -68,7 +68,7 @@ export class AppointmentService {
             .populate("specialty")
             .lean()
 
-        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
 
         return {
             ...appointment,
@@ -84,16 +84,14 @@ export class AppointmentService {
     }
 
     async update(id: string, updateDto: UpdateAppointmentDto) {
-        const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, {
-            new: true
-        })
-        if (!updated) throw new NotFoundException("Không tìm thấy lịch hẹn ")
+        const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, { new: true })
+        if (!updated) throw new NotFoundException("Không tìm thấy lịch hẹn")
         return updated
     }
 
     async remove(id: string) {
         const deleted = await this.appointmentModel.findByIdAndDelete(id)
-        if (!deleted) throw new NotFoundException("Không tìm thấy lịch hẹn ")
+        if (!deleted) throw new NotFoundException("Không tìm thấy lịch hẹn")
         return { message: "Deleted successfully" }
     }
 
@@ -103,17 +101,14 @@ export class AppointmentService {
             .populate("patient")
             .populate({
                 path: "doctor",
-                populate: {
-                    path: "specialty"
-                }
+                populate: { path: "specialty" }
             })
             .populate("specialty")
-        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
 
-        if (appointment?.doctor?._id?.toString() !== doctorId) {
-            console.log(" Doctor in appointment:", appointment?.doctor?._id?.toString())
-            console.log("Logged-in doctorId:", doctorId)
-            throw new Error("Bạn không phải là bác sĩ được giao")
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
+
+        if (String(appointment.doctor?._id) !== doctorId) {
+            throw new ForbiddenException("Bạn không phải là bác sĩ được giao")
         }
 
         if (appointment.status !== "PENDING") {
@@ -125,22 +120,53 @@ export class AppointmentService {
         if (note) appointment.doctorNote = note
         await appointment.save()
 
-        const patient = await this.appointmentModel.findById(id).populate("patient")
-        if (patient?.patient?.email) {
-            await this.mailService.sendTemplateMail({
-                to: patient.patient.email,
-                subject: "TalkToDoc : Lịch hẹn đã được xác nhận",
-                template: "appointment-confirm",
-                variables: {
-                    name: patient.patient.fullName,
-                    doctor: appointment?.doctor?.fullName,
-                    date: appointment.date,
-                    slot: appointment.slot,
-                    specialty: appointment?.specialty?.name,
-                    note: note || "",
-                    link: "https://www.talktodoc.online/"
-                }
-            })
+        const patient = await this.usersService.findOneUser(String(appointment.patient))
+        const doctor = await this.usersService.findOneUser(String(appointment.doctor._id))
+
+        // Gửi mail cho bệnh nhân
+        if (patient?.email) {
+            try {
+                this.logger.log(`Gửi mail xác nhận cho bệnh nhân: ${patient.email}`)
+                await this.mailService.sendTemplateMail({
+                    to: patient.email,
+                    subject: "Lịch hẹn đã được xác nhận",
+                    template: "appointment-confirm-patient",
+                    variables: {
+                        name: patient.fullName,
+                        doctor: doctor?.fullName,
+                        date: appointment.date,
+                        slot: appointment.slot,
+                        specialty: appointment.specialty?.name,
+                        note: note || "",
+                        link: "https://www.talktodoc.online/"
+                    }
+                })
+            } catch (error: any) {
+                this.logger.error(` Lỗi gửi mail cho bệnh nhân ${patient.email}: ${error.message}`)
+            }
+        }
+
+        // Gửi mail cho bác sĩ
+        if (doctor?.email) {
+            try {
+                this.logger.log(`Gửi mail xác nhận cho bác sĩ: ${doctor.email}`)
+                await this.mailService.sendTemplateMail({
+                    to: doctor.email,
+                    subject: "Bạn đã xác nhận một lịch hẹn",
+                    template: "appointment-confirm-doctor",
+                    variables: {
+                        name: doctor.fullName,
+                        patient: patient?.fullName,
+                        date: appointment.date,
+                        slot: appointment.slot,
+                        specialty: appointment.specialty?.name,
+                        note: note || "",
+                        link: "https://www.talktodoc.online/"
+                    }
+                })
+            } catch (error: any) {
+                this.logger.error(` Lỗi gửi mail cho bác sĩ ${doctor.email}: ${error.message}`)
+            }
         }
 
         return { message: "Lịch hẹn đã được xác nhận và email đã được gửi." }
@@ -152,21 +178,23 @@ export class AppointmentService {
             .populate("patient")
             .populate({
                 path: "doctor",
-                populate: {
-                    path: "specialty"
-                }
+                populate: { path: "specialty" }
             })
             .populate("specialty")
 
-        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn ")
-        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId ? appointment?.doctor?.toString() : appointment?.doctor?._id.toString()
+        if (!appointment) throw new NotFoundException("Không tìm thấy lịch hẹn")
+
+        const appointmentDoctorId = appointment.doctor instanceof mongoose.Types.ObjectId
+            ? appointment.doctor.toString()
+            : appointment.doctor._id.toString()
 
         if (appointmentDoctorId !== doctorId) {
-            console.log(" Doctor in appointment:", appointmentDoctorId)
-            console.log("Logged-in doctorId:", doctorId)
-            throw new ForbiddenException("You are not the assigned doctor")
+            throw new ForbiddenException("Bạn không phải là bác sĩ được giao")
         }
-        if (appointment.status !== "PENDING") throw new BadRequestException("Appointment must be in pending state")
+
+        if (appointment.status !== "PENDING") {
+            throw new BadRequestException("Lịch hẹn không đang ở trạng thái chờ")
+        }
 
         appointment.status = "REJECTED"
         appointment.cancelledAt = new Date()
@@ -174,23 +202,43 @@ export class AppointmentService {
         await appointment.save()
 
         const patient = await this.usersService.findOneUser(appointment.patient.toString())
+        const doctor = await this.usersService.findOneUser(appointment.doctor._id.toString())
+
         if (patient?.email) {
             await this.mailService.sendTemplateMail({
                 to: patient.email,
                 subject: "Lịch hẹn bị từ chối",
-                template: "appointment-reject",
+                template: "appointment-reject-patient",
                 variables: {
                     name: patient.fullName,
-                    doctor: appointment.doctor.fullName,
+                    doctor: doctor?.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
+                    specialty: appointment.specialty?.name,
                     reason,
                     link: "https://www.talktodoc.online/"
                 }
             })
         }
 
-        return { message: "Lịch hẹn đã được từ chối và email đã được gửi." }
+        if (doctor?.email) {
+            await this.mailService.sendTemplateMail({
+                to: doctor.email,
+                subject: "Bạn đã từ chối một lịch hẹn",
+                template: "appointment-reject-doctor",
+                variables: {
+                    name: doctor.fullName,
+                    patient: patient?.fullName,
+                    date: appointment.date,
+                    slot: appointment.slot,
+                    specialty: appointment.specialty?.name,
+                    reason,
+                    link: "https://www.talktodoc.online/"
+                }
+            })
+        }
+
+        return { message: "Lịch hẹn đã bị từ chối và email đã được gửi." }
     }
 
     private async generateUniqueAppointmentId(): Promise<string> {
