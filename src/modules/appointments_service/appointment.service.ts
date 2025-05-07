@@ -185,9 +185,10 @@ export class AppointmentService {
         appointment.doctorNote = reason
         await appointment.save()
 
-        const patient = await this.usersService.findOneUser(appointment.patient.toString())
-        const doctor = await this.usersService.findOneUser(appointment.doctor._id.toString())
+        // ✅ Lấy lại thông tin patient từ appointment đã populate
+        const patient = appointment.patient
 
+        // ✅ Gửi email cho bệnh nhân
         if (patient?.email) {
             await this.mailService.sendTemplateMail({
                 to: patient.email,
@@ -195,7 +196,7 @@ export class AppointmentService {
                 template: "appointment-reject-patient",
                 variables: {
                     name: patient.fullName,
-                    doctor: doctor?.fullName,
+                    doctor: appointment.doctor.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
                     specialty: appointment.specialty?.name,
@@ -205,23 +206,7 @@ export class AppointmentService {
             })
         }
 
-        if (doctor?.email) {
-            await this.mailService.sendTemplateMail({
-                to: doctor.email,
-                subject: "TalkToDoc : Bạn đã từ chối một lịch hẹn",
-                template: "appointment-reject-doctor",
-                variables: {
-                    name: doctor.fullName,
-                    patient: patient?.fullName,
-                    date: appointment.date,
-                    slot: appointment.slot,
-                    specialty: appointment.specialty?.name,
-                    reason,
-                    link: "https://www.talktodoc.online/"
-                }
-            })
-            console.log("Email đã được gửi cho bệnh nhân")
-        }
+        // ✅ Chỉ gửi 1 email cho bác sĩ với template 'doctor-reject'
         if (appointment?.doctor?.email) {
             await this.mailService.sendTemplateMail({
                 to: appointment.doctor.email,
@@ -229,7 +214,7 @@ export class AppointmentService {
                 template: "doctor-reject",
                 variables: {
                     name: appointment.doctor.fullName,
-                    patient: appointment.patient.fullName,
+                    patient: patient?.fullName,
                     date: appointment.date,
                     slot: appointment.slot,
                     note: reason,
@@ -238,6 +223,7 @@ export class AppointmentService {
             })
             console.log("Email đã được gửi cho bác sĩ")
         }
+
         return { message: "Lịch hẹn đã được từ chối và email đã được gửi." }
     }
 
