@@ -50,7 +50,7 @@ export class PaymentService {
 
         try {
             // Store order mapping
-            await this.storeOrderUserMapping(orderId, request.userId, request.amount)
+            await this.storeOrderUserMapping(orderId, request.patient, request.amount)
 
             // Build payment parameters - simplified but keeping required VNPay fields
             let vnp_Params: VnpayParams = {
@@ -106,7 +106,7 @@ export class PaymentService {
                         success: true,
                         message: "Payment successful, order marked as completed",
                         orderId,
-                        userId: orderMapping.userId
+                        patient: orderMapping.patient
                     }
                 } else {
                     return {
@@ -131,11 +131,11 @@ export class PaymentService {
         }
     }
 
-    async storeOrderUserMapping(orderId: string, userId: string, amount: number): Promise<OrderMapping> {
+    async storeOrderUserMapping(orderId: string, patient: string, amount: number): Promise<OrderMapping> {
         try {
             return this.orderMappingModel.create({
                 orderId,
-                userId,
+                patient,
                 amount,
                 status: "pending",
                 createdAt: new Date()
@@ -188,14 +188,14 @@ export class PaymentService {
     }
 
     // Simplified payment history retrieval
-    async getSimplifiedPaymentHistory(userId: string) {
+    async getSimplifiedPaymentHistory(patient: string) {
         const payments = await this.orderMappingModel
-            .find({ userId })
+            .find({ patient })
             .sort({ createdAt: 1 }) // Sắp xếp giảm dần theo thời gian tạo
             .lean()
             .exec()
 
-        const userInfo = await this.usersService.findOneUser(userId)
+        const userInfo = await this.usersService.findOneUser(patient)
 
         let name = "Unknown"
         let email = "Unknown"
@@ -229,40 +229,32 @@ export class PaymentService {
         return this.orderMappingModel.findById(orderId).exec()
     }
 
+    // Lấy user object bằng patient id (order.patient)
     async getAllOrders() {
         try {
-            const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).exec()
+            const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).lean().exec()
 
-            const ordersWithUserInfo = await Promise.all(
-                orders.map(async (order) => {
-                    try {
-                        const userInfo = await this.usersService.findOneUser(order.userId)
-
-                        let userResult: any = { message: `User not found for userId ${order.userId}` }
-
-                        if (userInfo && typeof userInfo === "object") {
-                            userResult = {
-                                _id: (userInfo as any)._id,
-                                name: "name" in userInfo ? userInfo.name : (userInfo.fullName ?? "Unknown"),
-                                email: userInfo.email ?? "Unknown"
-                            }
-                        }
-
-                        return {
-                            ...order.toJSON(),
-                            userInfo: userResult
-                        }
-                    } catch (error: unknown) {
-                        this.logger.error(`Error getting user info for order ${order.orderId}: ${error instanceof Error ? error.message : "Unknown error"}`)
-                        return {
-                            ...order.toJSON(),
-                            userInfo: {
-                                message: `Error fetching user info for userId ${order.userId}`
-                            }
-                        }
+            const patientIds = orders.map((order) => order.patient).filter(Boolean)
+            console.log("patientIds", patientIds)
+            const patients = await this.usersService.findManyPatientsByIds(patientIds)
+            console.log("patients", patients)
+            const ordersWithUserInfo = orders.map((order) => {
+                const userInfo = patients.find((patient) => patient._id?.toString() === order.patient)
+                let userResult: any = { message: `User not found for patient ${order.patient}` }
+                console.log("userInfo", userInfo)
+                if (userInfo && typeof userInfo === "object") {
+                    userResult = {
+                        _id: userInfo._id,
+                        name: userInfo.fullName || "Unknown",
+                        email: userInfo.email || "Unknown"
                     }
-                })
-            )
+                }
+                console.log("userResult", userResult)
+                return {
+                    ...order,
+                    userInfo: userResult
+                }
+            })
 
             return ordersWithUserInfo
         } catch (error: unknown) {
@@ -270,19 +262,19 @@ export class PaymentService {
             throw error
         }
     }
-    async verifyTransaction(orderId: string, userId: string): Promise<boolean> {
+    async verifyTransaction(orderId: string, patient: string): Promise<boolean> {
         try {
             const order = await this.orderMappingModel
                 .findOne({
                     orderId,
-                    userId,
+                    patient,
                     status: "completed"
                 })
                 .exec()
 
             return !!order
         } catch (error) {
-            this.logger.error(`Error verifying transaction for orderId=${orderId}, userId=${userId}: ${error instanceof Error ? error.message : "Unknown error"}`)
+            this.logger.error(`Error verifying transaction for orderId=${orderId}, patient=${patient}: ${error instanceof Error ? error.message : "Unknown error"}`)
             return false
         }
     }

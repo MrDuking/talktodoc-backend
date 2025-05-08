@@ -9,7 +9,7 @@ export class PaymentRequestDto {
   })
   @IsNotEmpty()
   @IsString()
-  userId!: string;
+  patient!: string;
 
   @ApiProperty({
     description: 'Payment amount in VND',

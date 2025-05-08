@@ -48,15 +48,11 @@ export class UsersService {
     } // ===================== API CHO DOCTOR =====================
 
     async getAllDoctors(): Promise<Doctor[]> {
-        
         return this.doctorModel.find().populate("specialty").populate("rank").populate("hospital").exec()
     }
     async migrateDefaultRegistrationStatus(): Promise<void> {
-        await this.doctorModel.updateMany(
-          { registrationStatus: { $exists: true } },
-          { $set: { registrationStatus: 'approved' } }
-        );
-      }
+        await this.doctorModel.updateMany({ registrationStatus: { $exists: true } }, { $set: { registrationStatus: "approved" } })
+    }
     async getDoctorById(id: string): Promise<Doctor> {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             throw new BadRequestException("Invalid doctor ID format")
@@ -202,26 +198,34 @@ export class UsersService {
 
         return { data: patients, total, page, limit }
     }
+    async findManyPatientsByIds(ids: string[]): Promise<Patient[]> {
+        if (!Array.isArray(ids) || ids.length === 0) return []
+        const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new mongoose.Types.ObjectId(id))
+        if (objectIds.length === 0) return []
+        return this.patientModel
+            .find({ _id: { $in: objectIds } })
+            .lean()
+            .exec()
+    }
+
     //find one
     async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-          return null;
+            return null
         }
 
-        const patient = await this.patientModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
-        if (patient) return patient;
-        const doctor = await this.doctorModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
-        if (doctor) return doctor;
+        const patient = await this.patientModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (patient) return patient
+        const doctor = await this.doctorModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (doctor) return doctor
 
-        const employee = await this.employeeModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec();
-        if (employee) return employee;
+        const employee = await this.employeeModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (employee) return employee
 
-        return null;
-      }
+        return null
+    }
 
-
-  async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
-    return this.patientModel.findOne({ email }).exec();
-  }
+    async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
+        return this.patientModel.findOne({ email }).exec()
+    }
 }
-
