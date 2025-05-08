@@ -151,7 +151,7 @@ export class OtpService {
             await axios.post(
                 'https://api.resend.com/emails',
                 {
-                    from: 'onboarding@resend.dev',
+                    from: 'noreply@talktodoc.online',
                     to: email,
                     subject: "Mã xác thực OTP - TalkToDoc",
                     html: `

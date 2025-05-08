@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as handlebars from 'handlebars';
@@ -17,28 +17,26 @@ export class MailService {
     private readonly emailLogModel: Model<EmailLog>,
   ) {}
 
-  // Gmail SMTP config
-  private transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
-
-  // sned email template
   async sendTemplateMail(dto: MailTemplateDto): Promise<void> {
     const { to, subject, template, variables } = dto;
+    const html = this.renderTemplate(template, variables);
 
     try {
-      const html = this.renderTemplate(template, variables);
-
-      await this.transporter.sendMail({
-        from: `"TalkToDoc" <${process.env.MAIL_USER}>`,
-        to,
-        subject,
-        html,
-      });
+      await axios.post(
+        'https://api.resend.com/emails',
+        {
+          from: 'noreply@talktodoc.online',
+          to,
+          subject,
+          html,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       await this.emailLogModel.create({
         to,
@@ -48,24 +46,24 @@ export class MailService {
       });
 
       this.logger.log(` Email sent to ${to} | Template: ${template}`);
-    } catch (error: unknown) {
-      this.logger.error(`Failed to send email to ${to}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || error.message || 'Unknown error';
+      this.logger.error(` Failed to send email to ${to}: ${errMsg}`);
 
       await this.emailLogModel.create({
         to,
         subject,
-        html: '',
+        html,
         success: false,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorMessage: errMsg,
       });
 
-      throw error;
+      throw new Error(`Failed to send email: ${errMsg}`);
     }
   }
 
-  // read and render conetent template HTML
   private renderTemplate(templateName: string, variables: Record<string, any>): string {
-    const filePath = path.join(process.cwd(), 'src', 'modules', 'mail', 'templates', `${templateName}.html`)
+    const filePath = path.join(process.cwd(), 'src', 'modules', 'mail', 'templates', `${templateName}.html`);
 
     if (!fs.existsSync(filePath)) {
       throw new Error(`Template "${templateName}" not found`);
