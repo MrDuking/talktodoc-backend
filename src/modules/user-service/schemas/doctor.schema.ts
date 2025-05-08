@@ -51,7 +51,7 @@ export class Doctor extends BaseUser {
     @Prop({ type: String, required: false })
     position?: string
 
-    @Prop({ type: String, enum: DoctorRegistrationStatus, required: false, default: DoctorRegistrationStatus.APPROVED })
+    @Prop({ type: String, enum: DoctorRegistrationStatus, required: false, default: DoctorRegistrationStatus.PENDING })
     registrationStatus?: DoctorRegistrationStatus
 }
 
