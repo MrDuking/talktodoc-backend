@@ -31,7 +31,7 @@ export class PaymentService {
         this.vnp_TmnCode = this.configService.get<string>("VNP_TMN_CODE") || "BAXGHO1O"
         this.vnp_HashSecret = this.configService.get<string>("VNP_HASH_SECRET") || "W6AXF4895PIAWHEKVS7KAZ8QTX6DPXR3"
         this.vnp_Url = this.configService.get<string>("VNP_URL") || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-        this.urlCallBack = this.configService.get<string>("VNP_CALLBACK_URL") || "http://localhost:8080/payment"
+        this.urlCallBack = this.configService.get<string>("VNP_CALLBACK_URL") || process.env.CALLBACK_URL_VNPAY || "http://dashboard.talktodoc.online/payment"
     }
 
     async createPaymentUrl(request: PaymentRequestDto): Promise<PaymentUrlResponse> {
