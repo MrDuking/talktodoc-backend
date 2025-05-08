@@ -16,6 +16,10 @@ export class OtpService {
     ) {}
 
     private transporter = nodemailer.createTransport({
+        // host: 'smtp.gmail.com',
+        // port: 465,
+        ignoreTLS:true,
+        secure:false,
         service: "gmail",
         auth: {
             user: process.env.MAIL_USER,
