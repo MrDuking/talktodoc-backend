@@ -19,13 +19,12 @@ import { ChatModule } from "./modules/chat-bot-service/chat.module"
 import { Case } from "./modules/case/schemas/case.schema"
 import { CaseModule } from "./modules/case/case.module"
 
-
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-             isGlobal: true,
-             load: [vnpayConfig],
-             }),
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [vnpayConfig],
+    }),
 
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
