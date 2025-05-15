@@ -12,6 +12,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import mongoose, { Model } from 'mongoose'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos/index'
 import { Appointment } from './schemas/appointment.schema'
+import { Case } from '@/modules/case/schemas/case.schema'
 
 interface Patient {
   _id: string
@@ -55,6 +56,8 @@ export class AppointmentService {
   constructor(
     @InjectModel(Appointment.name)
     private readonly appointmentModel: Model<Appointment>,
+    @InjectModel(Case.name)
+    private readonly caseModel: Model<Case>,
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
   ) {}
@@ -66,15 +69,46 @@ export class AppointmentService {
     )
   }
 
-  async create(createDto: CreateAppointmentDto): Promise<Appointment> {
+  async create(createDto: CreateAppointmentDto & { patient: string }): Promise<Appointment> {
+    const {
+      case_id,
+      specialty,
+      doctor,
+      date,
+      slot,
+      timezone,
+      patient,
+    } = createDto
+
+    if (!case_id || !doctor || !date || !slot || !specialty) {
+      throw new BadRequestException('Vui lòng cung cấp đầy đủ thông tin để đặt lịch hẹn')
+    }
+
+    const caseRecord = await this.caseModel.findById(case_id)
+    if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
+    if (caseRecord.patient.toString() !== patient) {
+      throw new ForbiddenException('Bạn không có quyền tạo lịch hẹn cho case này')
+    }
+
     const appointmentId = await this.generateUniqueAppointmentId()
+
     const appointment = new this.appointmentModel({
-      ...createDto,
       appointmentId,
-      timezone: createDto.timezone || 'Asia/Ho_Chi_Minh',
+      patient,
+      doctor,
+      specialty,
+      date,
+      slot,
+      timezone: timezone || 'Asia/Ho_Chi_Minh',
       status: 'PENDING',
     })
-    return appointment.save()
+
+    const savedAppointment = await appointment.save()
+
+    caseRecord.appointmentId = new mongoose.Types.ObjectId(savedAppointment._id as string)
+    await caseRecord.save()
+
+    return savedAppointment
   }
 
   async findAppointments(
