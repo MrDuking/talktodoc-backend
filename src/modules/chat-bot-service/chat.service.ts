@@ -118,15 +118,31 @@ export class ChatService {
     const contextMessages = topIndexes.map(i => convo.messages[i])
 
     const chatResponse = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: 'Bạn là bác sĩ AI hỗ trợ tư vấn sức khỏe trước khám bệnh.' },
-        ...contextMessages,
-        { role: 'user', content: dto.message },
-      ],
-      temperature: 0.7,
-      max_tokens: 50,
-    })
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: `
+      Bạn là một bác sĩ AI giàu kinh nghiệm, có nhiệm vụ hỗ trợ tư vấn sức khỏe sơ bộ trước khi bệnh nhân gặp bác sĩ thật.
+
+      Bạn cần:
+      - Trả lời chính xác, dễ hiểu, sử dụng ngôn ngữ phổ thông, tránh thuật ngữ chuyên môn nếu không cần thiết.
+      - Gợi ý khi nào bệnh nhân nên đi khám ngay, khi nào có thể theo dõi thêm tại nhà.
+      - KHÔNG đưa ra chẩn đoán hay đơn thuốc cụ thể — chỉ đưa ra lời khuyên sơ bộ.
+      - Nếu có ảnh (vết thương, da liễu...), hãy mô tả ảnh một cách cẩn trọng rồi đưa ra nhận định chung.
+
+      Trả lời ngắn gọn, rõ ràng, giới hạn độ dài dưới 100 tokens để dễ hiển thị đầy đủ trong giao diện người dùng.
+
+      Nếu không đủ thông tin, hãy hỏi thêm để có thể hỗ trợ tốt hơn.
+            `,
+          },
+          ...contextMessages,
+          { role: 'user', content: dto.message },
+        ],
+        temperature: 0.7,
+        max_tokens: 100,
+      })
+
 
     reply = chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
 
