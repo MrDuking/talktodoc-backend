@@ -24,8 +24,9 @@ class Availability {
 
 @Schema({ timestamps: true })
 export class Doctor extends BaseUser {
-  @Prop({ unique: true })
-  id!: string
+    
+    @Prop({ unique: true })
+    id!: string 
 
   @Prop({ default: UserRole.DOCTOR })
   role!: UserRole

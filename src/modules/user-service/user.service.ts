@@ -86,19 +86,22 @@ export class UsersService {
     )
   }
 
-  async getDoctorById(id: string): Promise<Doctor> {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new BadRequestException('Invalid doctor ID format')
+    async deleteEmployee(id: string): Promise<void> {
+        if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid employee ID format")
+        const result = await this.employeeModel.findByIdAndDelete(id).exec()
+        if (!result) throw new NotFoundException("Employee not found")
+    } // ===================== API CHO DOCTOR =====================
+
+    async getAllDoctors(): Promise<Doctor[]> {
+        return this.doctorModel.find().populate("specialty").populate("rank").populate("hospital").exec()
     }
-    const doctor = await this.doctorModel
-      .findById(id)
-      .populate('specialty')
-      .populate('rank')
-      .populate('hospital')
-      .exec()
-    if (!doctor) throw new NotFoundException('Doctor not found')
-    return doctor
-  }
+    async migrateDefaultRegistrationStatus(): Promise<void> {
+        await this.doctorModel.updateMany({ registrationStatus: { $exists: true } }, { $set: { registrationStatus: "approved" } })
+    }
+    async getDoctorById(id: string): Promise<Doctor> {
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            throw new BadRequestException("Invalid doctor ID format")
+        }
 
   async createDoctor(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
     const doctor = new this.doctorModel(createDoctorDto)
@@ -274,38 +277,34 @@ export class UsersService {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return null
     }
+    async findManyPatientsByIds(ids: string[]): Promise<Patient[]> {
+        if (!Array.isArray(ids) || ids.length === 0) return []
+        const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new mongoose.Types.ObjectId(id))
+        if (objectIds.length === 0) return []
+        return this.patientModel
+            .find({ _id: { $in: objectIds } })
+            .lean()
+            .exec()
+    }
 
-    const patient = await this.patientModel.findById(userId).lean().exec()
-    if (patient) return patient
+    //find one
+    async findOneUser(userId: string): Promise<Doctor | Patient | Employee | null> {
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return null
+        }
 
-    const doctor = await this.doctorModel
-      .findById(userId)
-      .populate('specialty')
-      .populate('rank')
-      .populate('hospital')
-      .lean()
-      .exec()
-    if (doctor) return doctor
+        const patient = await this.patientModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (patient) return patient
+        const doctor = await this.doctorModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (doctor) return doctor
 
-    const employee = await this.employeeModel
-      .findById(userId)
-      .populate('specialty')
-      .populate('hospital')
-      .lean()
-      .exec()
-    if (employee) return employee
+        const employee = await this.employeeModel.findById(userId).lean().populate("specialty").populate("rank").populate("hospital").exec()
+        if (employee) return employee
 
-    return null
-  }
+        return null
+    }
 
-  async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
-    if (!email) return null
-    const patient = await this.patientModel.findOne({ email }).exec()
-    if (patient) return patient
-    const doctor = await this.doctorModel.findOne({ email }).exec()
-    if (doctor) return doctor
-    const employee = await this.employeeModel.findOne({ email }).exec()
-    if (employee) return employee
-    return null
-  }
+    async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
+        return this.patientModel.findOne({ email }).exec()
+    }
 }
