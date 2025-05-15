@@ -16,14 +16,15 @@ import { AppointmentModule } from "./modules/appointments_service/appointment.mo
 import { MailModule } from "./modules/mail/mail.module"
 import { FormConfigModule } from "./modules/form-config-service/form-config.module"
 import { ChatModule } from "./modules/chat-bot-service/chat.module"
-
+import { Case } from "./modules/case/schemas/case.schema"
+import { CaseModule } from "./modules/case/case.module"
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-             isGlobal: true,
-             load: [vnpayConfig],
-             }),
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [vnpayConfig],
+    }),
 
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
@@ -46,6 +47,7 @@ import { ChatModule } from "./modules/chat-bot-service/chat.module"
         AppointmentModule,
         FormConfigModule,
         ChatModule,
+        CaseModule,
         PaymentModule
     ]
 })
