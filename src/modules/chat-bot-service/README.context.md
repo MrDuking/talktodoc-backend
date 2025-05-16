@@ -1,68 +1,43 @@
-# Chat Bot Service Context API - Hướng dẫn cho Frontend
+# 📚 Chat Bot Service API Documentation
 
-## Tổng quan
+## 1. Tổng quan
 
-Dịch vụ chat bot hỗ trợ gửi tin nhắn dạng text và hình ảnh (qua URL). API backend sẽ tự động nhận diện, phân tích và trả lời phù hợp.
+Dịch vụ Chat Bot hỗ trợ hội thoại giữa người dùng và AI, nhận diện và trả lời thông minh dựa trên text và hình ảnh (qua URL).
+API hỗ trợ gửi tin nhắn, nhận phản hồi, lưu lịch sử hội thoại.
 
 ---
 
-## 1. Endpoint API gửi tin nhắn
-
-### **Endpoint chung**
+## 2. Endpoint gửi tin nhắn
 
 - **Method:** `POST`
 - **Path:** `/chat-bot-service/:conversationId/send-message`
-  - `:conversationId` là ID của cuộc hội thoại (lấy từ API tạo mới hoặc danh sách hội thoại).
+  - `:conversationId`: ID của cuộc hội thoại (tạo mới hoặc lấy từ danh sách hội thoại).
 - **Content-Type:** `application/json`
 
 ---
 
-## 2. Gửi tin nhắn (text + ảnh)
+## 3. Cách gửi tin nhắn
 
-### **Phương án 1: Gửi ảnh qua URL trong chuỗi message**
+### 3.1. Gửi text + ảnh qua URL trong message
 
-- **Text**: Gửi như bình thường.
-- **Ảnh**: Gửi dưới dạng URL ảnh hợp lệ (jpg, png, webp, ...), chèn trực tiếp vào chuỗi `message` (có thể nhiều URL, cách nhau bởi dấu cách hoặc xuống dòng).
-- **Ưu điểm**: Đơn giản, không cần đổi API, tương thích mọi client.
-- **Nhược điểm**: Frontend phải tự nối URL ảnh vào chuỗi text.
+- Gửi text như bình thường.
+- Gửi ảnh bằng cách chèn URL ảnh vào chuỗi `message` (cách nhau bởi dấu cách hoặc xuống dòng).
 
-#### Ví dụ message hợp lệ
-
-```
-Tôi bị nổi mẩn đỏ, đây là ảnh:
-https://example.com/image1.jpg https://example.com/image2.png
-```
-
-#### Request mẫu
+**Ví dụ:**
 
 ```json
 {
-  "message": "Tôi bị đau bụng nhiều ngày\nhttps://example.com/image.jpg",
+  "message": "Tôi bị nổi mẩn đỏ, đây là ảnh:\nhttps://example.com/image1.jpg https://example.com/image2.png",
   "user_id": "user_123"
 }
 ```
 
-#### Ví dụ curl:
+### 3.2. Gửi text + ảnh qua trường `imageUrls` (Khuyến nghị)
 
-```bash
-curl -X POST 'http://localhost:3000/chat-bot-service/6824d208e2f12cad7d54c0c6/send-message' \
-  -H 'Content-Type: application/json' \
-  --data-raw '{
-    "message": "Tôi bị đau bụng nhiều ngày\nhttps://example.com/image.jpg",
-    "user_id": "user_123"
-  }'
-```
+- Gửi text trong trường `message`.
+- Gửi mảng URL ảnh trong trường `imageUrls`.
 
----
-
-### **Phương án 2: Gửi ảnh qua trường imageUrls (mảng URL)**
-
-- **Text**: Gửi trong trường `message`.
-- **Ảnh**: Gửi mảng URL ảnh trong trường `imageUrls` (kiểu: string[]).
-- **Ưu điểm**: Frontend dễ tách biệt text và ảnh, backend xử lý rõ ràng.
-- **Nhược điểm**: Cần cập nhật API, controller, DTO, tài liệu.
-
-#### Request mẫu
+**Ví dụ:**
 
 ```json
 {
@@ -72,26 +47,11 @@ curl -X POST 'http://localhost:3000/chat-bot-service/6824d208e2f12cad7d54c0c6/se
 }
 ```
 
-#### Ví dụ curl:
-
-```bash
-curl -X POST 'http://localhost:3000/chat-bot-service/6824d208e2f12cad7d54c0c6/send-message' \
-  -H 'Content-Type: application/json' \
-  --data-raw '{
-    "message": "Tôi bị đau bụng nhiều ngày",
-    "user_id": "user_123",
-    "imageUrls": ["https://example.com/image1.jpg", "https://example.com/image2.png"]
-  }'
-```
-
-#### Lưu ý:
-
-- Nếu gửi cả URL ảnh trong `message` và trong `imageUrls`, backend sẽ gộp lại và phân tích tất cả.
-- Nếu chỉ gửi `message` (không có `imageUrls`), backend vẫn hoạt động bình thường.
+**Lưu ý:** Có thể gửi đồng thời cả URL ảnh trong `message` và trong `imageUrls`, backend sẽ gộp lại để phân tích.
 
 ---
 
-## 3. Response mẫu
+## 4. Response mẫu
 
 ```json
 {
@@ -103,35 +63,50 @@ curl -X POST 'http://localhost:3000/chat-bot-service/6824d208e2f12cad7d54c0c6/se
 }
 ```
 
----
-
-## 4. Hướng dẫn frontend tweak logic
-
-- **Khuyến nghị:**
-  - Nếu backend đã hỗ trợ trường `imageUrls`, frontend nên tách riêng text và mảng URL ảnh, gửi đúng 2 trường này.
-  - Nếu backend chỉ hỗ trợ `message`, hãy nối các URL ảnh vào chuỗi text, cách nhau bằng dấu cách hoặc xuống dòng.
-- **Khi upload file ảnh:**
-  1. Upload file lên dịch vụ lưu trữ (Cloudinary, Imgur, S3, ...).
-  2. Lấy URL trả về, đưa vào mảng `imageUrls` (nếu dùng phương án 2) hoặc nối vào chuỗi `message` (nếu dùng phương án 1).
-- **Luôn đảm bảo URL ảnh là public và hợp lệ.**
+- `reply`: Câu trả lời cuối cùng của AI.
+- `messages`: Lịch sử hội thoại (bao gồm cả user và assistant).
 
 ---
 
-## 5. Lưu ý khi tích hợp
+## 5. Hướng dẫn frontend
+
+- **Khuyến nghị:** Nếu backend đã hỗ trợ `imageUrls`, hãy tách riêng text và mảng URL ảnh, gửi đúng 2 trường này.
+- Khi upload ảnh:
+  1. Upload lên dịch vụ lưu trữ (Cloudinary, S3, ...).
+  2. Lấy URL trả về, đưa vào `imageUrls` hoặc nối vào `message` (nếu chỉ hỗ trợ message).
+- Đảm bảo URL ảnh là public.
+
+---
+
+## 6. Lưu ý
 
 - Có thể gửi nhiều ảnh cùng lúc, AI sẽ phân tích tổng thể.
-- Nếu chỉ có text, AI sẽ trả lời như bình thường.
+- Nếu chỉ có text, AI trả lời như bình thường.
 - Nếu chỉ có ảnh, AI sẽ phân tích ảnh.
 - Nếu gửi cả text và ảnh, AI sẽ phân tích tổng thể.
-- Đảm bảo URL ảnh truy cập được từ internet (không dùng local file).
+- Đảm bảo URL ảnh truy cập được từ internet.
 
 ---
 
-## 6. Xử lý lỗi
+## 7. Xử lý lỗi
 
 - Nếu ảnh không hợp lệ hoặc không truy cập được, AI sẽ trả về thông báo lỗi thân thiện.
-- Nếu API OpenAI Vision lỗi, backend sẽ trả về thông báo lỗi cho người dùng.
+- Nếu API AI lỗi, backend sẽ trả về thông báo lỗi cho người dùng.
 
 ---
 
-Nếu cần hỗ trợ thêm về upload file ảnh hoặc các format khác, liên hệ backend để mở rộng API.
+## 8. Ví dụ curl
+
+```bash
+curl -X POST 'http://localhost:3000/chat-bot-service/6824d208e2f12cad7d54c0c6/send-message' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "message": "Tôi bị đau bụng nhiều ngày",
+    "user_id": "user_123",
+    "imageUrls": ["https://example.com/image1.jpg", "https://example.com/image2.png"]
+  }'
+```
+
+---
+
+**Nếu cần hỗ trợ thêm về upload file ảnh hoặc các format khác, liên hệ backend để mở rộng API.**
