@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MedicineController } from './medicines.controller';
-import { MedicineService } from './medicines.service';
-import { Medicine, MedicineSchema } from './schemas/medicines.schema';
-import { RedisModule } from '@liaoliaots/nestjs-redis';
+import { RedisModule } from '@liaoliaots/nestjs-redis'
+import { Module } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
+import { MedicineController } from './medicines.controller'
+import { MedicineService } from './medicines.service'
+import { Medicine, MedicineSchema } from './schemas/medicines.schema'
 
 @Module({
   imports: [

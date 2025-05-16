@@ -1,5 +1,5 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { CallService } from './call.service';
+import { Body, Controller, Post } from '@nestjs/common'
+import { CallService } from './call.service'
 
 @Controller('webhook')
 export class CallController {
@@ -7,6 +7,6 @@ export class CallController {
 
   @Post('/stringee')
   handleStringeeWebhook(@Body() payload: any) {
-    return this.callService.processWebhook(payload);
+    return this.callService.processWebhook(payload)
   }
 }

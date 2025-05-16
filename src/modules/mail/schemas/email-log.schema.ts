@@ -1,22 +1,22 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class EmailLog extends Document {
   @Prop({ required: true })
-  to!: string;
+  to!: string
 
   @Prop({ required: true })
-  subject!: string;
+  subject!: string
 
   @Prop()
-  html?: string;
+  html?: string
 
   @Prop({ default: true })
-  success!: boolean;
+  success!: boolean
 
   @Prop()
-  errorMessage?: string;
+  errorMessage?: string
 }
 
-export const EmailLogSchema = SchemaFactory.createForClass(EmailLog);
+export const EmailLogSchema = SchemaFactory.createForClass(EmailLog)

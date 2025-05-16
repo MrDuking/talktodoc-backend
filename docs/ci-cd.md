@@ -11,9 +11,9 @@ name: Code Quality Check
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   quality:
@@ -37,7 +37,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -55,12 +55,14 @@ jobs:
 ## Quy trình tự động hóa
 
 1. **Code Quality**
+
    - ESLint kiểm tra code style
    - Prettier format code
    - Jest chạy unit tests
    - SonarQube phân tích code quality
 
 2. **Build**
+
    - Build TypeScript code
    - Tạo Docker image
    - Push image lên Docker Hub
@@ -96,4 +98,4 @@ OPENAI_API_KEY=
 
 - Sử dụng Sentry để theo dõi lỗi
 - Prometheus + Grafana để monitoring metrics
-- ELK Stack để log management 
+- ELK Stack để log management

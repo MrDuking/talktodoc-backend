@@ -1,11 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import {
-  IsIn,
-  IsMongoId,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator'
+import { IsEnum, IsMongoId, IsObject, IsOptional } from 'class-validator'
+import { CaseAction } from '../enum/case-action.enum'
 
 export class SubmitCaseDto {
   @ApiProperty({ description: 'ID của case (bệnh án)' })
@@ -37,12 +32,9 @@ export class SubmitCaseDto {
   medical_form?: Record<string, any>
 
   @ApiProperty({
-    description: 'Hành động xử lý: save (lưu nháp), submit (gửi), sendback (trả về)',
-    enum: ['save', 'submit', 'sendback'],
+    description: 'Hành động xử lý case',
+    enum: CaseAction,
   })
-  @IsString({ message: 'action không hợp lệ' })
-  @IsIn(['save', 'submit', 'sendback'], {
-    message: 'action phải là một trong: save, submit, sendback',
-  })
-  action!: 'save' | 'submit' | 'sendback'
+  @IsEnum(CaseAction, { message: 'action phải là một trong: save, submit, sendback' })
+  action!: CaseAction
 }

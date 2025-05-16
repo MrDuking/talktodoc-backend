@@ -1,1 +1,1 @@
-export * from "./pharmacy.schema"
+export * from './pharmacy.schema'

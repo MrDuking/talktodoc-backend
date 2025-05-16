@@ -1,12 +1,12 @@
-import { IsEmail, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsString } from 'class-validator'
 
 export class VerifyOtpDto {
   @ApiProperty({ example: 'user@gmail.com' })
   @IsEmail()
-  email!: string;
+  email!: string
 
   @ApiProperty({ example: '123456' })
   @IsString()
-  otp!: string;
+  otp!: string
 }

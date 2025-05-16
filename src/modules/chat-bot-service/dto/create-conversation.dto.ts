@@ -1,8 +1,8 @@
-import { IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsString } from 'class-validator'
 
 export class CreateConversationDto {
   @ApiProperty({ example: 'user_123', description: 'ID of the user initiating the conversation' })
   @IsString()
-  user_id!: string;
+  user_id!: string
 }

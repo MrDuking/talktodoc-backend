@@ -1,20 +1,20 @@
-import { IsEmail, IsNotEmpty, IsObject, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsNotEmpty, IsObject, IsString } from 'class-validator'
 
 export class MailTemplateDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email người nhận' })
   @IsEmail()
-  to!: string;
+  to!: string
 
   @ApiProperty({ example: 'Lịch hẹn xác nhận', description: 'Tiêu đề email' })
   @IsString()
   @IsNotEmpty()
-  subject!: string;
+  subject!: string
 
   @ApiProperty({ example: 'appointment-confirm', description: 'Tên template (không cần .html)' })
   @IsString()
   @IsNotEmpty()
-  template!: string;
+  template!: string
 
   @ApiProperty({
     example: {
@@ -26,5 +26,5 @@ export class MailTemplateDto {
     description: 'Biến động truyền vào template (render bằng handlebars)',
   })
   @IsObject()
-  variables!: Record<string, any>;
+  variables!: Record<string, any>
 }

@@ -1,81 +1,100 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common"
-import { InjectModel } from "@nestjs/mongoose"
-import { Model, Types } from "mongoose"
-import { CreateHospitalDto, UpdateHospitalDto } from "./dtos/index"
-import { Hospital, HospitalDocument } from "./schemas/hospital.schema"
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
+import { Model, Types } from 'mongoose'
+import { CreateHospitalDto, UpdateHospitalDto } from './dtos/index'
+import { Hospital, HospitalDocument } from './schemas/hospital.schema'
 
 @Injectable()
 export class HospitalService {
-    constructor(@InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>) {}
+  constructor(@InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>) {}
 
-    async getAllHospitals(): Promise<Hospital[]> {
-        return this.hospitalModel.find().populate("specialty").exec()
+  async getAllHospitals(): Promise<Hospital[]> {
+    return this.hospitalModel.find().populate('specialty').exec()
+  }
+
+  async getHospitalById(id: string): Promise<Hospital> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid hospital ID format')
     }
 
-    async getHospitalById(id: string): Promise<Hospital> {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid hospital ID format")
-        }
+    const hospital = await this.hospitalModel.findById(id).populate('specialty').exec()
 
-        const hospital = await this.hospitalModel.findById(id).populate("specialty").exec()
+    if (!hospital) throw new NotFoundException('Hospital not found')
+    return hospital
+  }
 
-        if (!hospital) throw new NotFoundException("Hospital not found")
-        return hospital
+  async searchHospitals(
+    query: string,
+    page: number = 1,
+    limit: number = 10,
+    sortField: string = 'name',
+    sortOrder: 'asc' | 'desc' = 'asc',
+  ) {
+    const filter: any = {}
+
+    if (query) {
+      filter.$or = [
+        { id: { $regex: query, $options: 'i' } },
+        { name: { $regex: query, $options: 'i' } },
+        { address: { $regex: query, $options: 'i' } },
+        { phoneNumber: { $regex: query, $options: 'i' } },
+      ]
     }
 
-    async searchHospitals(query: string, page: number = 1, limit: number = 10, sortField: string = "name", sortOrder: "asc" | "desc" = "asc") {
-        const filter: any = {}
+    const total = await this.hospitalModel.countDocuments(filter)
+    const hospitals = await this.hospitalModel
+      .find(filter)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .sort({ createdAt: 'desc' })
+      .populate('specialty')
+      .lean()
+      .exec()
 
-        if (query) {
-            filter.$or = [ { id: { $regex: query, $options: "i" } },{ name: { $regex: query, $options: "i" } }, { address: { $regex: query, $options: "i" } }, { phoneNumber: { $regex: query, $options: "i" } }]
-        }
+    return { data: hospitals, total, page, limit }
+  }
 
-        const total = await this.hospitalModel.countDocuments(filter)
-        const hospitals = await this.hospitalModel
-            .find(filter)
-            .skip((page - 1) * limit)
-            .limit(limit)
-            .sort({ createdAt: "desc" })
-            .populate("specialty")
-            .lean()
-            .exec()
+  async createHospital(createHospitalDto: CreateHospitalDto): Promise<Hospital> {
+    try {
+      const existing = await this.hospitalModel.findOne({ name: createHospitalDto.name }).exec()
+      if (existing) {
+        throw new BadRequestException('Hospital name already exists')
+      }
 
-        return { data: hospitals, total, page, limit }
+      const hospital = new this.hospitalModel(createHospitalDto)
+      return await hospital.save()
+    } catch (error: any) {
+      console.error('Error creating hospital:', error.message)
+      if (error.code === 11000) throw new BadRequestException('Hospital name must be unique')
+      throw new InternalServerErrorException('Error creating hospital')
+    }
+  }
+
+  async updateHospital(id: string, updateHospitalDto: UpdateHospitalDto): Promise<Hospital> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid hospital ID format')
     }
 
-    async createHospital(createHospitalDto: CreateHospitalDto): Promise<Hospital> {
-        try {
-            const existing = await this.hospitalModel.findOne({ name: createHospitalDto.name }).exec()
-            if (existing) {
-                throw new BadRequestException("Hospital name already exists")
-            }
+    const updatedHospital = await this.hospitalModel
+      .findByIdAndUpdate(id, updateHospitalDto, { new: true })
+      .populate('specialty')
+      .exec()
 
-            const hospital = new this.hospitalModel(createHospitalDto)
-            return await hospital.save()
-        } catch (error: any) {
-            console.error("Error creating hospital:", error.message)
-            if (error.code === 11000) throw new BadRequestException("Hospital name must be unique")
-            throw new InternalServerErrorException("Error creating hospital")
-        }
+    if (!updatedHospital) throw new NotFoundException('Hospital not found')
+    return updatedHospital
+  }
+
+  async deleteHospital(id: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid hospital ID format')
     }
 
-    async updateHospital(id: string, updateHospitalDto: UpdateHospitalDto): Promise<Hospital> {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid hospital ID format")
-        }
-
-        const updatedHospital = await this.hospitalModel.findByIdAndUpdate(id, updateHospitalDto, { new: true }).populate("specialty").exec()
-
-        if (!updatedHospital) throw new NotFoundException("Hospital not found")
-        return updatedHospital
-    }
-
-    async deleteHospital(id: string): Promise<void> {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new BadRequestException("Invalid hospital ID format")
-        }
-
-        const result = await this.hospitalModel.findByIdAndDelete(id).exec()
-        if (!result) throw new NotFoundException("Hospital not found")
-    }
+    const result = await this.hospitalModel.findByIdAndDelete(id).exec()
+    if (!result) throw new NotFoundException('Hospital not found')
+  }
 }

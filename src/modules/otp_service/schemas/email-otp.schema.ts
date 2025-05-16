@@ -1,19 +1,19 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class EmailOtp extends Document {
   @Prop({ required: true })
-  email!: string;
+  email!: string
 
   @Prop({ required: true })
-  otp!: string;
+  otp!: string
 
   @Prop({ required: true })
-  expiresAt!: Date;
+  expiresAt!: Date
 
   @Prop({ default: false })
-  isVerified!: boolean;
+  isVerified!: boolean
 }
 
-export const EmailOtpSchema = SchemaFactory.createForClass(EmailOtp);
+export const EmailOtpSchema = SchemaFactory.createForClass(EmailOtp)

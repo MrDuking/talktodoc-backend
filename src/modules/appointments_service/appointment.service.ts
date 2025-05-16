@@ -1,4 +1,5 @@
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface'
+import { Case } from '@/modules/case/schemas/case.schema'
 import { MailService } from '@modules/mail/mail.service'
 import { UsersService } from '@modules/user-service/user.service'
 import {
@@ -12,7 +13,6 @@ import { InjectModel } from '@nestjs/mongoose'
 import mongoose, { Model } from 'mongoose'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos/index'
 import { Appointment } from './schemas/appointment.schema'
-import { Case } from '@/modules/case/schemas/case.schema'
 
 interface Patient {
   _id: string
@@ -70,15 +70,7 @@ export class AppointmentService {
   }
 
   async create(createDto: CreateAppointmentDto & { patient: string }): Promise<Appointment> {
-    const {
-      case_id,
-      specialty,
-      doctor,
-      date,
-      slot,
-      timezone,
-      patient,
-    } = createDto
+    const { case_id, specialty, doctor, date, slot, timezone, patient } = createDto
 
     if (!case_id || !doctor || !date || !slot || !specialty) {
       throw new BadRequestException('Vui lòng cung cấp đầy đủ thông tin để đặt lịch hẹn')

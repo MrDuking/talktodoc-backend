@@ -1,24 +1,24 @@
-import { IsEmail, IsNotEmpty, IsString, Matches } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator'
 
 export class RegisterUserDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  username!: string;
+  username!: string
 
   @ApiProperty()
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email!: string
 
   @ApiProperty()
   @IsString()
   @Matches(/^[0-9]{10,11}$/)
-  phoneNumber!: string;
+  phoneNumber!: string
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  password!: string;
+  password!: string
 }

@@ -3,9 +3,11 @@
 ## Authentication
 
 ### POST /auth/login
+
 Đăng nhập vào hệ thống
 
 **Request Body:**
+
 ```json
 {
   "email": "string",
@@ -14,6 +16,7 @@
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "string",
@@ -22,9 +25,11 @@
 ```
 
 ### POST /auth/register
+
 Đăng ký tài khoản mới
 
 **Request Body:**
+
 ```json
 {
   "email": "string",
@@ -34,6 +39,7 @@
 ```
 
 **Response:**
+
 ```json
 {
   "id": "string",
@@ -45,14 +51,17 @@
 ## Documents
 
 ### GET /documents
+
 Lấy danh sách tài liệu
 
 **Query Parameters:**
+
 - page: number
 - limit: number
 - search: string
 
 **Response:**
+
 ```json
 {
   "items": [
@@ -71,9 +80,11 @@ Lấy danh sách tài liệu
 ```
 
 ### POST /documents
+
 Tải lên tài liệu mới
 
 **Request Body:**
+
 ```json
 {
   "title": "string",
@@ -83,6 +94,7 @@ Tải lên tài liệu mới
 ```
 
 **Response:**
+
 ```json
 {
   "id": "string",
@@ -95,9 +107,11 @@ Tải lên tài liệu mới
 ## Chat
 
 ### POST /chat/message
+
 Gửi tin nhắn chat
 
 **Request Body:**
+
 ```json
 {
   "message": "string",
@@ -106,6 +120,7 @@ Gửi tin nhắn chat
 ```
 
 **Response:**
+
 ```json
 {
   "id": "string",
@@ -116,14 +131,17 @@ Gửi tin nhắn chat
 ```
 
 ### GET /chat/history
+
 Lấy lịch sử chat
 
 **Query Parameters:**
+
 - documentId: string
 - page: number
 - limit: number
 
 **Response:**
+
 ```json
 {
   "items": [
@@ -138,4 +156,4 @@ Lấy lịch sử chat
   "page": "number",
   "limit": "number"
 }
-``` 
+```

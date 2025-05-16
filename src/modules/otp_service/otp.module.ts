@@ -1,17 +1,16 @@
+import {
+  Doctor,
+  DoctorSchema,
+  Employee,
+  EmployeeSchema,
+  Patient,
+  PatientSchema,
+} from '@modules/user-service/schemas'
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
-import { OtpService } from './otp.service'
 import { OtpController } from './otp.controller'
+import { OtpService } from './otp.service'
 import { EmailOtp, EmailOtpSchema } from './schemas/email-otp.schema'
-import {
-    Doctor,
-    Patient,
-    Employee,
-    DoctorSchema,
-    PatientSchema,
-    EmployeeSchema
-  } from "@modules/user-service/schemas"
-
 
 @Module({
   imports: [
@@ -20,7 +19,7 @@ import {
       { name: Doctor.name, schema: DoctorSchema },
       { name: Patient.name, schema: PatientSchema },
       { name: Employee.name, schema: EmployeeSchema },
-    ])
+    ]),
   ],
   controllers: [OtpController],
   providers: [OtpService],

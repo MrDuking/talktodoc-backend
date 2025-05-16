@@ -1,6 +1,6 @@
 // payment-request.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator'
 
 export class PaymentRequestDto {
   @ApiProperty({
@@ -9,7 +9,7 @@ export class PaymentRequestDto {
   })
   @IsNotEmpty()
   @IsString()
-  patient!: string;
+  patient!: string
 
   @ApiProperty({
     description: 'Payment amount in VND',
@@ -19,5 +19,5 @@ export class PaymentRequestDto {
   @IsNotEmpty()
   @IsNumber()
   @Min(10000)
-  amount!: number;
+  amount!: number
 }

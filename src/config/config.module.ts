@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
-import configService, { ConfigService } from './config/config.service';
+import { Module } from '@nestjs/common'
+import configService, { ConfigService } from './config/config.service'
 
 @Module({
   providers: [
     {
       provide: ConfigService,
-      useValue: configService
-    }
+      useValue: configService,
+    },
   ],
-  exports: [ConfigService]
+  exports: [ConfigService],
 })
 export class ConfigModule {}

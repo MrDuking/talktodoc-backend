@@ -42,10 +42,10 @@ export class Case {
         medications: [
           {
             medicationId: { type: Types.ObjectId, ref: 'Medicine' },
-            name: String,        // tên thuốc snapshot
-            dosage: String,      // liều dùng
-            usage: String,       // cách dùng
-            duration: String     // thời gian
+            name: String, // tên thuốc snapshot
+            dosage: String, // liều dùng
+            usage: String, // cách dùng
+            duration: String, // thời gian
           },
         ],
       },

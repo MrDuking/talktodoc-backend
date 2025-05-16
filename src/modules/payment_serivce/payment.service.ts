@@ -19,7 +19,6 @@ import { OrderMapping } from './schemas/order-mapping.schema'
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name)
 
-  // Direct variable declarations
   private readonly vnp_TmnCode: string
   private readonly vnp_HashSecret: string
   private readonly vnp_Url: string
@@ -31,7 +30,6 @@ export class PaymentService {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
-    // Initialize variables in constructor
     this.vnp_TmnCode = this.configService.get<string>('VNP_TMN_CODE') || 'BAXGHO1O'
     this.vnp_HashSecret =
       this.configService.get<string>('VNP_HASH_SECRET') || 'W6AXF4895PIAWHEKVS7KAZ8QTX6DPXR3'
@@ -46,11 +44,8 @@ export class PaymentService {
 
   async createPaymentUrl(request: PaymentRequestDto): Promise<PaymentUrlResponse> {
     process.env.TZ = 'Asia/Ho_Chi_Minh'
-
     const date = new Date()
     const createDate = moment(date).format('YYYYMMDDHHmmss')
-
-    // Add random number to avoid duplicate orderId
     const randomNum = Math.floor(Math.random() * 1000)
       .toString()
       .padStart(3, '0')
@@ -58,11 +53,9 @@ export class PaymentService {
 
     this.logger.log(`Generated orderId: ${orderId}`)
 
-        try {
-            // Store order mapping
-            await this.storeOrderUserMapping(orderId, request.patient, request.amount)
+    try {
+      await this.storeOrderUserMapping(orderId, request.patient, request.amount)
 
-      // Build payment parameters - simplified but keeping required VNPay fields
       let vnp_Params: VnpayParams = {
         vnp_Version: '2.1.0',
         vnp_Command: 'pay',
@@ -78,7 +71,6 @@ export class PaymentService {
         vnp_CreateDate: createDate,
       }
 
-      // Sort and sign
       vnp_Params = this.sortObject(vnp_Params)
       const signData = querystring.stringify(vnp_Params, { encode: false })
 
@@ -90,9 +82,7 @@ export class PaymentService {
       const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex')
       vnp_Params['vnp_SecureHash'] = signed
 
-      // Build URL
       const vnpUrl = this.vnp_Url + '?' + querystring.stringify(vnp_Params, { encode: false })
-
       return { paymentUrl: vnpUrl }
     } catch (error: unknown) {
       this.logger.error(
@@ -103,46 +93,28 @@ export class PaymentService {
     }
   }
 
-  // Simplified callback processing
   async processSimpleCallback(
     callbackData: PaymentCallbackDto,
   ): Promise<PaymentVerificationResponse> {
     try {
-      // Kiểm tra mã phản hồi từ cổng thanh toán
       if (callbackData.vnp_ResponseCode === '00') {
         const orderId = callbackData.vnp_TxnRef
         const orderMapping = await this.getOrderMapping(orderId)
 
         if (orderMapping) {
-          // Cập nhật trạng thái đơn hàng
           await this.updateOrderStatus(orderId, 'completed')
-
-                    return {
-                        success: true,
-                        message: "Payment successful, order marked as completed",
-                        orderId,
-                        patient: orderMapping.patient
-                    }
-                } else {
-                    return {
-                        success: false,
-                        message: "Order not found",
-                        orderId
-                    }
-                }
-            } else {
-                return {
-                    success: false,
-                    message: `Payment failed: ${callbackData.vnp_ResponseCode}`,
-                    orderId: callbackData.vnp_TxnRef
-                }
-            }
-        } catch (error) {
-            this.logger.error("Payment verification error:", error)
-            return {
-                success: false,
-                message: "Payment verification error"
-            }
+          return {
+            success: true,
+            message: 'Payment successful, order marked as completed',
+            orderId,
+            patient: orderMapping.patient,
+          }
+        } else {
+          return {
+            success: false,
+            message: 'Order not found',
+            orderId,
+          }
         }
       } else {
         return {
@@ -160,19 +132,25 @@ export class PaymentService {
     }
   }
 
-    async storeOrderUserMapping(orderId: string, patient: string, amount: number): Promise<OrderMapping> {
-        try {
-            return this.orderMappingModel.create({
-                orderId,
-                patient,
-                amount,
-                status: "pending",
-                createdAt: new Date()
-            })
-        } catch (error: unknown) {
-            this.logger.error(`Error storing order mapping: ${error instanceof Error ? error.message : "Unknown error"}`, error instanceof Error ? error.stack : undefined)
-            throw error
-        }
+  async storeOrderUserMapping(
+    orderId: string,
+    patient: string,
+    amount: number,
+  ): Promise<OrderMapping> {
+    try {
+      return this.orderMappingModel.create({
+        orderId,
+        patient,
+        amount,
+        status: 'pending',
+        createdAt: new Date(),
+      })
+    } catch (error: unknown) {
+      this.logger.error(
+        `Error storing order mapping: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      )
+      throw error
     }
   }
 
@@ -203,30 +181,20 @@ export class PaymentService {
 
   sortObject(obj: Record<string, string | number>): Record<string, string> {
     const sorted: Record<string, string> = {}
-    const str: string[] = []
-    let key: string
-    for (key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        str.push(encodeURIComponent(key))
-      }
-    }
-    str.sort()
-    for (let i = 0; i < str.length; i++) {
-      const value = obj[str[i]]
-      sorted[str[i]] = encodeURIComponent(String(value)).replace(/%20/g, '+')
+    const keys = Object.keys(obj).sort()
+    for (const key of keys) {
+      sorted[key] = encodeURIComponent(String(obj[key])).replace(/%20/g, '+')
     }
     return sorted
   }
 
-    // Simplified payment history retrieval
-    async getSimplifiedPaymentHistory(patient: string) {
-        const payments = await this.orderMappingModel
-            .find({ patient })
-            .sort({ createdAt: 1 }) // Sắp xếp giảm dần theo thời gian tạo
-            .lean()
-            .exec()
-
-        const userInfo = await this.usersService.findOneUser(patient)
+  async getSimplifiedPaymentHistory(patient: string) {
+    const payments = await this.orderMappingModel
+      .find({ patient })
+      .sort({ createdAt: 1 })
+      .lean()
+      .exec()
+    const userInfo = await this.usersService.findOneUser(patient)
 
     let name = 'Unknown'
     let email = 'Unknown'
@@ -249,10 +217,7 @@ export class PaymentService {
       status: payment.status,
       createdAt: payment.createdAt,
       completedAt: payment.completedAt,
-      user: {
-        name,
-        email,
-      },
+      user: { name, email },
     }))
   }
 
@@ -262,77 +227,61 @@ export class PaymentService {
     status: string
     createdAt: Date
     completedAt?: Date
-    user: {
-      name: string
-      email: string
-    }
+    user: { name: string; email: string }
   }> {
     const order = await this.orderMappingModel.findOne({ orderId }).lean().exec()
     if (!order) {
       throw new Error(`Order not found for orderId: ${orderId}`)
     }
 
-    // Lấy user object bằng patient id (order.patient)
-    async getAllOrders() {
-        try {
-            const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).lean().exec()
+    const userInfo = await this.usersService.findOneUser(order.patient)
+    const name = userInfo && 'fullName' in userInfo ? userInfo.fullName : 'Unknown'
+    const email = userInfo && 'email' in userInfo ? userInfo.email : 'Unknown'
 
-            const patientIds = orders.map((order) => order.patient).filter(Boolean)
-            console.log("patientIds", patientIds)
-            const patients = await this.usersService.findManyPatientsByIds(patientIds)
-            console.log("patients", patients)
-            const ordersWithUserInfo = orders.map((order) => {
-                const userInfo = patients.find((patient) => patient._id?.toString() === order.patient)
-                let userResult: any = { message: `User not found for patient ${order.patient}` }
-                console.log("userInfo", userInfo)
-                if (userInfo && typeof userInfo === "object") {
-                    userResult = {
-                        _id: userInfo._id,
-                        name: userInfo.fullName || "Unknown",
-                        email: userInfo.email || "Unknown"
-                    }
-                }
-                console.log("userResult", userResult)
-                return {
-                    ...order,
-                    userInfo: userResult
-                }
-            })
+    return {
+      orderId: order.orderId,
+      amount: order.amount,
+      status: order.status,
+      createdAt: order.createdAt,
+      completedAt: order.completedAt,
+      user: { name, email },
+    }
+  }
 
-      // Lấy thông tin người dùng cho tất cả đơn hàng
-      const ordersWithUserInfo = await Promise.all(
-        orders.map(async order => {
-          const userInfo = await this.usersService.findOneUser(order.userId)
-          return {
-            ...order,
-            userInfo: {
-              fullName: userInfo?.fullName || '',
-              email: userInfo?.email || '',
-            },
-          }
-        }),
-      )
+  async getAllOrders() {
+    try {
+      const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).lean().exec()
+      const patientIds = orders.map(order => order.patient).filter(Boolean)
+      const patients = await this.usersService.findManyPatientsByIds(patientIds)
 
-      return ordersWithUserInfo
+      return orders.map(order => {
+        const userInfo = patients.find(p => p._id?.toString() === order.patient)
+        const name = userInfo?.fullName || 'Unknown'
+        const email = userInfo?.email || 'Unknown'
+        return {
+          ...order,
+          userInfo: { name, email },
+        }
+      })
     } catch (error) {
       this.logger.error('Error getting all orders:', error)
       throw error
     }
-    async verifyTransaction(orderId: string, patient: string): Promise<boolean> {
-        try {
-            const order = await this.orderMappingModel
-                .findOne({
-                    orderId,
-                    patient,
-                    status: "completed"
-                })
-                .exec()
+  }
 
-            return !!order
-        } catch (error) {
-            this.logger.error(`Error verifying transaction for orderId=${orderId}, patient=${patient}: ${error instanceof Error ? error.message : "Unknown error"}`)
-            return false
-        }
+  async verifyTransaction(orderId: string, patient: string): Promise<boolean> {
+    try {
+      const order = await this.orderMappingModel
+        .findOne({ orderId, patient, status: 'completed' })
+        .exec()
+      return !!order
+    } catch (error) {
+      this.logger.error(
+        `Error verifying transaction for orderId=${orderId}, patient=${patient}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      )
+      return false
     }
   }
 }

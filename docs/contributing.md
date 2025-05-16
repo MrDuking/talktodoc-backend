@@ -23,12 +23,14 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 ## Code Style
 
 1. **TypeScript**
+
    - Sử dụng strict mode
    - Định nghĩa type cho tất cả biến
    - Sử dụng interface thay vì type khi có thể
    - Tránh sử dụng `any`
 
 2. **NestJS**
+
    - Tuân thủ module pattern
    - Sử dụng dependency injection
    - Tách biệt business logic vào services
@@ -51,16 +53,19 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 ## Development Setup
 
 1. Cài đặt dependencies:
+
    ```bash
    npm install
    ```
 
 2. Cài đặt pre-commit hooks:
+
    ```bash
    npm run prepare
    ```
 
 3. Chạy development server:
+
    ```bash
    npm run start:dev
    ```
@@ -73,16 +78,19 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 ## Code Review Guidelines
 
 1. **Kiểm tra code style**
+
    - Tuân thủ ESLint rules
    - Format code với Prettier
    - Không có lỗi TypeScript
 
 2. **Kiểm tra functionality**
+
    - Code hoạt động đúng
    - Xử lý edge cases
    - Performance tốt
 
 3. **Kiểm tra security**
+
    - Không có security vulnerabilities
    - Xử lý input validation
    - Xử lý authentication/authorization
@@ -90,4 +98,4 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 4. **Kiểm tra tests**
    - Tests đầy đủ
    - Tests pass
-   - Test coverage đạt yêu cầu 
+   - Test coverage đạt yêu cầu

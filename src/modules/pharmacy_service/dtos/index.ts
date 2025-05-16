@@ -1,1 +1,1 @@
-export * from "./pharmacy.dto"
+export * from './pharmacy.dto'

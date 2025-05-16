@@ -1,25 +1,25 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document } from 'mongoose'
 
 @Schema()
 export class OrderMapping extends Document {
   @Prop({ required: true, unique: true })
-  orderId!: string;
+  orderId!: string
 
   @Prop({ required: true })
-  patient!: string;
+  patient!: string
 
   @Prop({ required: true })
-  amount!: number;
+  amount!: number
 
   @Prop({ required: true, enum: ['pending', 'completed', 'failed'] })
-  status!: string;
+  status!: string
 
   @Prop({ required: true })
-  createdAt!: Date;
+  createdAt!: Date
 
   @Prop()
-  completedAt?: Date;
+  completedAt?: Date
 }
 
-export const OrderMappingSchema = SchemaFactory.createForClass(OrderMapping);
+export const OrderMappingSchema = SchemaFactory.createForClass(OrderMapping)

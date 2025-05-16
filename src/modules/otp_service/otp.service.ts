@@ -95,66 +95,66 @@
 //         return { message: "OTP đã được xác thực thành công" }
 //     }
 // }
-import { Doctor, Employee, Patient } from "@modules/user-service/schemas/index"
-import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common"
-import { InjectModel } from "@nestjs/mongoose"
-import { randomInt } from "crypto"
-import { Model } from "mongoose"
+import { Doctor, Employee, Patient } from '@modules/user-service/schemas/index'
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
 import axios from 'axios'
-import { EmailOtp } from "./schemas/email-otp.schema"
+import { randomInt } from 'crypto'
+import { Model } from 'mongoose'
+import { EmailOtp } from './schemas/email-otp.schema'
 
 @Injectable()
 export class OtpService {
-    constructor(
-        @InjectModel(EmailOtp.name) private otpModel: Model<EmailOtp>,
-        @InjectModel(Doctor.name) private doctorModel: Model<Doctor>,
-        @InjectModel(Patient.name) private patientModel: Model<Patient>,
-        @InjectModel(Employee.name) private employeeModel: Model<Employee>
-    ) {}
+  constructor(
+    @InjectModel(EmailOtp.name) private otpModel: Model<EmailOtp>,
+    @InjectModel(Doctor.name) private doctorModel: Model<Doctor>,
+    @InjectModel(Patient.name) private patientModel: Model<Patient>,
+    @InjectModel(Employee.name) private employeeModel: Model<Employee>,
+  ) {}
 
-    private async isEmailTaken(email: string): Promise<boolean> {
-        const [doctor, patient, employee] = await Promise.all([
-            this.doctorModel.findOne({ email }),
-            this.patientModel.findOne({ email }),
-            this.employeeModel.findOne({ email })
-        ])
-        return !!(doctor || patient || employee)
+  private async isEmailTaken(email: string): Promise<boolean> {
+    const [doctor, patient, employee] = await Promise.all([
+      this.doctorModel.findOne({ email }),
+      this.patientModel.findOne({ email }),
+      this.employeeModel.findOne({ email }),
+    ])
+    return !!(doctor || patient || employee)
+  }
+
+  async sendOtp(email: string) {
+    if (await this.isEmailTaken(email)) {
+      throw new BadRequestException('Email đã tồn tại trong hệ thống')
     }
 
-    async sendOtp(email: string) {
-        if (await this.isEmailTaken(email)) {
-            throw new BadRequestException("Email đã tồn tại trong hệ thống")
-        }
+    const existingOtp = await this.otpModel.findOne({ email })
 
-        const existingOtp = await this.otpModel.findOne({ email })
+    if (existingOtp) {
+      if (existingOtp.isVerified) {
+        throw new BadRequestException('Email đã được xác thực')
+      }
 
-        if (existingOtp) {
-            if (existingOtp.isVerified) {
-                throw new BadRequestException("Email đã được xác thực")
-            }
+      if (existingOtp.expiresAt > new Date()) {
+        throw new BadRequestException('OTP vẫn còn hiệu lực, vui lòng kiểm tra email của bạn')
+      }
+    }
 
-            if (existingOtp.expiresAt > new Date()) {
-                throw new BadRequestException("OTP vẫn còn hiệu lực, vui lòng kiểm tra email của bạn")
-            }
-        }
+    const otp = randomInt(100000, 999999).toString()
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
 
-        const otp = randomInt(100000, 999999).toString()
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
+    await this.otpModel.findOneAndUpdate(
+      { email },
+      { email, otp, expiresAt, isVerified: false },
+      { upsert: true, new: true },
+    )
 
-        await this.otpModel.findOneAndUpdate(
-            { email },
-            { email, otp, expiresAt, isVerified: false },
-            { upsert: true, new: true }
-        )
-
-        try {
-            await axios.post(
-                'https://api.resend.com/emails',
-                {
-                    from: 'noreply@talktodoc.online',
-                    to: email,
-                    subject: "Mã xác thực OTP - TalkToDoc",
-                    html: `
+    try {
+      await axios.post(
+        'https://api.resend.com/emails',
+        {
+          from: 'noreply@talktodoc.online',
+          to: email,
+          subject: 'Mã xác thực OTP - TalkToDoc',
+          html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd;">
                             <h2 style="color: #2E86C1;">Xác thực đăng ký tài khoản</h2>
                             <p>Xin chào,</p>
@@ -166,37 +166,37 @@ export class OtpService {
                             <hr />
                             <p style="font-size: 12px; color: #888;">© ${new Date().getFullYear()} TalkToDoc. All rights reserved.</p>
                         </div>
-                    `
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            )
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.error("Gửi email OTP thất bại:", error.response?.data || error.message)
-            } else {
-                console.error("Gửi email OTP thất bại:", (error as Error).message)
-            }
-            throw new InternalServerErrorException("Không thể gửi OTP, vui lòng thử lại sau")
-        }
-
-        return { message: "OTP mới đã được gửi đến email của bạn" }
+                    `,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Gửi email OTP thất bại:', error.response?.data || error.message)
+      } else {
+        console.error('Gửi email OTP thất bại:', (error as Error).message)
+      }
+      throw new InternalServerErrorException('Không thể gửi OTP, vui lòng thử lại sau')
     }
 
-    async verifyOtp(email: string, otp: string) {
-        const record = await this.otpModel.findOne({ email, otp })
+    return { message: 'OTP mới đã được gửi đến email của bạn' }
+  }
 
-        if (!record) throw new BadRequestException("OTP không hợp lệ")
-        if (record.isVerified) throw new BadRequestException("OTP đã được sử dụng")
-        if (record.expiresAt < new Date()) throw new BadRequestException("OTP đã hết hạn")
+  async verifyOtp(email: string, otp: string) {
+    const record = await this.otpModel.findOne({ email, otp })
 
-        record.isVerified = true
-        await record.save()
+    if (!record) throw new BadRequestException('OTP không hợp lệ')
+    if (record.isVerified) throw new BadRequestException('OTP đã được sử dụng')
+    if (record.expiresAt < new Date()) throw new BadRequestException('OTP đã hết hạn')
 
-        return { message: "OTP đã được xác thực thành công" }
-    }
+    record.isVerified = true
+    await record.save()
+
+    return { message: 'OTP đã được xác thực thành công' }
+  }
 }

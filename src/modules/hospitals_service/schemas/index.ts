@@ -1,1 +1,1 @@
-export * from "./hospital.schema"
+export * from './hospital.schema'

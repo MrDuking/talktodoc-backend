@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable } from '@nestjs/common'
+import * as nodemailer from 'nodemailer'
 
 @Injectable()
 export class ContactService {
@@ -9,10 +9,10 @@ export class ContactService {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
     },
-  });
+  })
 
   async sendMail(fromEmail: string, name: string, message: string): Promise<void> {
-    const sanitizedMessage = message.replace(/\n/g, '<br>');
+    const sanitizedMessage = message.replace(/\n/g, '<br>')
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 15px; color: #333; line-height: 1.6;">
@@ -37,15 +37,15 @@ export class ContactService {
         <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;" />
         <p style="font-size: 12px; color: #999;">📣 Đây là email tự động từ hệ thống TalkToDoc. Vui lòng không trả lời trực tiếp.</p>
       </div>
-    `;
+    `
 
     const mailOptions = {
       from: `"TalkToDoc - ${name}" <${fromEmail}>`,
       to: process.env.CSKH_EMAIL,
       subject: `📥 Yêu cầu hỗ trợ từ khách hàng: ${name}`,
       html: htmlContent,
-    };
+    }
 
-    await this.transporter.sendMail(mailOptions);
+    await this.transporter.sendMail(mailOptions)
   }
 }

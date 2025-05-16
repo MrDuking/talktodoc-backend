@@ -1,11 +1,11 @@
-import { UserRole } from "../../auth/enums/user-role.enum"
+import { UserRole } from '../../auth/enums/user-role.enum'
 
 export interface IUserWithRole {
-    _id: any;
-    name?: string;
-    fullName?: string;
-    email?: string;
-    phoneNumber?: string;
-    role: UserRole;
-    [key: string]: any;
-} 
+  _id: any
+  name?: string
+  fullName?: string
+  email?: string
+  phoneNumber?: string
+  role: UserRole
+  [key: string]: any
+}

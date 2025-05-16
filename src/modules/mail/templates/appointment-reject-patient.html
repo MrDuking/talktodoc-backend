@@ -1,20 +1,23 @@
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-    <h2 style="color: #C0392B;">Lịch hẹn bị từ chối</h2>
-    <p>Xin chào <strong>{{name}}</strong>,</p>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto">
+  <h2 style="color: #c0392b">Lịch hẹn bị từ chối</h2>
+  <p>Xin chào <strong>{{name}}</strong>,</p>
 
-    <p>Chúng tôi rất tiếc phải thông báo rằng bác sĩ <strong>{{doctor}}</strong> đã từ chối lịch hẹn của bạn.</p>
+  <p>
+    Chúng tôi rất tiếc phải thông báo rằng bác sĩ <strong>{{doctor}}</strong> đã từ chối lịch hẹn
+    của bạn.
+  </p>
 
-    <ul style="padding-left: 20px;">
-      <li><strong>Ngày khám:</strong> {{date}}</li>
-      <li><strong>Giờ Khám:</strong> {{slot}}</li>
-      <li><strong>Chuyên khoa:</strong> {{specialty}}</li>
-      {{#if reason}}
-      <li><strong>Lý do từ chối:</strong> {{reason}}</li>
-      {{/if}}
-    </ul>
+  <ul style="padding-left: 20px">
+    <li><strong>Ngày khám:</strong> {{date}}</li>
+    <li><strong>Giờ Khám:</strong> {{slot}}</li>
+    <li><strong>Chuyên khoa:</strong> {{specialty}}</li>
+    {{#if reason}}
+    <li><strong>Lý do từ chối:</strong> {{reason}}</li>
+    {{/if}}
+  </ul>
 
-    <p>Vui lòng chọn bác sĩ hoặc khung giờ khác phù hợp hơn. Cảm ơn bạn đã sử dụng TalkToDoc.</p>
-    <p> Xem chi tiết tại: <a href="{{link}}" target="_blank">{{link}}</a></p>
-    <hr />
-    <p style="font-size: 12px; color: #888;">Email này được gửi tự động. Vui lòng không trả lời.</p>
-  </div>
+  <p>Vui lòng chọn bác sĩ hoặc khung giờ khác phù hợp hơn. Cảm ơn bạn đã sử dụng TalkToDoc.</p>
+  <p>Xem chi tiết tại: <a href="{{link}}" target="_blank">{{link}}</a></p>
+  <hr />
+  <p style="font-size: 12px; color: #888">Email này được gửi tự động. Vui lòng không trả lời.</p>
+</div>

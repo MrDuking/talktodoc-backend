@@ -38,11 +38,13 @@ Xem chi tiết API tại [API Documentation](./docs/api.md)
 ## Quy trình phát triển
 
 1. **Tạo branch mới**
+
    ```bash
    git checkout -b feature/ten-feature
    ```
 
 2. **Commit changes**
+
    ```bash
    git add .
    git commit -m "feat: mô tả thay đổi"
@@ -69,6 +71,7 @@ npm run test:cov
 ## CI/CD
 
 Dự án sử dụng GitHub Actions để tự động hóa quy trình:
+
 - Kiểm tra code style
 - Chạy unit tests
 - Build và deploy

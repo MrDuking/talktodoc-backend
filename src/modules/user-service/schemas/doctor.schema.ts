@@ -13,20 +13,27 @@ export enum DoctorRegistrationStatus {
 export type DoctorDocument = Doctor & Document
 export type DoctorModel = Model<DoctorDocument>
 
+// ------------------ Availability Schema ------------------
 @Schema()
 class Availability {
   @Prop({ required: true })
-  date!: string
+  dayOfWeek!: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
 
-  @Prop({ type: [String], required: true })
-  timeSlots!: string[]
+  @Prop({ required: true })
+  index!: number // thứ tự trong ngày (ca 1, ca 2...)
+
+  @Prop({ required: true })
+  timeStart!: string // "08:00"
+
+  @Prop({ required: true })
+  timeEnd!: string // "12:00"
 }
 
+// ------------------ Doctor Schema ------------------
 @Schema({ timestamps: true })
 export class Doctor extends BaseUser {
-    
-    @Prop({ unique: true })
-    id!: string 
+  @Prop({ unique: true })
+  id!: string
 
   @Prop({ default: UserRole.DOCTOR })
   role!: UserRole
@@ -53,6 +60,25 @@ export class Doctor extends BaseUser {
   position?: string
 
   @Prop({
+    type: [
+      {
+        ratingScore: Number,
+        description: String,
+        appointmentId: { type: Types.ObjectId },
+      },
+    ],
+    default: [],
+  })
+  ratingDetails!: {
+    ratingScore: number
+    description?: string
+    appointmentId?: Types.ObjectId
+  }[]
+
+  @Prop({ default: 0 })
+  avgScore!: number
+
+  @Prop({
     type: String,
     enum: DoctorRegistrationStatus,
     required: false,
@@ -66,6 +92,7 @@ export class Doctor extends BaseUser {
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)
 
+// ------------------ Generate unique DRxxxxxx ID ------------------
 DoctorSchema.pre<DoctorDocument>('save', async function (next) {
   if (!this.id) {
     let uniqueId

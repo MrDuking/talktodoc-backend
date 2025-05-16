@@ -1,12 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import {
-  IsArray,
-  IsMongoId,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator'
 import { Type } from 'class-transformer'
+import { IsArray, IsMongoId, IsOptional, IsString, ValidateNested } from 'class-validator'
 
 export class MedicationItemDto {
   @ApiProperty({ description: 'ID thuốc từ collection Medicine' })
