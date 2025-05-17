@@ -10,8 +10,8 @@ export class Case {
   @Prop({ type: Types.ObjectId, ref: 'Patient', required: true })
   patient!: Types.ObjectId
 
-  @Prop({ type: Types.ObjectId, ref: 'Specialty', required: true })
-  specialty!: Types.ObjectId
+  @Prop({ type: Types.ObjectId, ref: 'Speciality', required: true })
+  speciality!: Types.ObjectId
 
   @Prop({ type: Object, default: {} })
   medicalForm?: Record<string, any>

@@ -118,7 +118,9 @@ export class AppointmentService {
     const total = await this.appointmentModel.countDocuments(filter)
     const data = await this.appointmentModel
       .find(filter)
-      .populate('patient')
+      .populate({
+        path: 'patient',
+      })
       .populate({
         path: 'doctor',
         populate: { path: 'specialty' },
@@ -135,7 +137,10 @@ export class AppointmentService {
   async findOne(id: string): Promise<AppointmentResponse> {
     const appointment = await this.appointmentModel
       .findById(id)
-      .populate('patient')
+      .populate({
+        path: 'patient',
+        select: 'fullName avatar',
+      })
       .populate({
         path: 'doctor',
         populate: ['specialty', 'rank'],

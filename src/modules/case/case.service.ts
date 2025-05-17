@@ -6,11 +6,16 @@ import moment from 'moment'
 import { Model, Types } from 'mongoose'
 import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
-import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
 import { CaseAction } from './enum/case-action.enum'
+import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
 
 interface PopulatedUser {
   fullName: string
+}
+
+interface CreateCaseDto {
+  specialtyId: string
+  patient: string
 }
 
 function validateObjectIdOrThrow(id: string, label = 'ID') {
@@ -27,9 +32,31 @@ export class CaseService {
   ) {}
 
   async submitData(dto: SubmitCaseDto, user: JwtPayload) {
-    const { case_id, appointment_id, medical_form, action } = dto
-    validateObjectIdOrThrow(case_id, 'Bệnh án')
+    const { case_id, appointment_id, medical_form, action, specialty } = dto as any
 
+    if (
+      (!case_id || case_id === '') &&
+      (action === CaseAction.CREATE || action === CaseAction.SAVE)
+    ) {
+      if (!specialty) throw new BadRequestException('Chuyên khoa là bắt buộc')
+      validateObjectIdOrThrow(specialty, 'Chuyên khoa')
+      const newCase = new this.caseModel({
+        patient: user.userId,
+        specialty,
+        medicalForm: medical_form || {},
+        status: 'draft',
+        createdAt: new Date(),
+        isDeleted: false,
+      })
+      await newCase.save()
+      return {
+        message: 'Tạo bệnh án thành công',
+        case_id: newCase._id,
+        ...newCase.toObject(),
+      }
+    }
+
+    validateObjectIdOrThrow(case_id, 'Bệnh án')
     const caseRecord = await this.caseModel.findById(case_id)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
     if (caseRecord.patient.toString() !== user.userId) {
@@ -37,11 +64,15 @@ export class CaseService {
     }
 
     switch (action) {
+      case CaseAction.CREATE:
+        caseRecord.patient = new Types.ObjectId(user.userId)
+        caseRecord.status = 'draft'
+        await caseRecord.save()
+        return { message: 'Đã tạo bệnh án mới' }
       case CaseAction.SAVE:
         if (medical_form) caseRecord.medicalForm = medical_form
         await caseRecord.save()
         return { message: 'Đã lưu bệnh án tạm thời' }
-
       case CaseAction.SUBMIT:
         if (caseRecord.status === 'draft') {
           if (!appointment_id) throw new BadRequestException('Vui lòng chọn lịch hẹn trước')
@@ -56,7 +87,6 @@ export class CaseService {
         }
         await caseRecord.save()
         return { message: 'Cập nhật bệnh án thành công' }
-
       case CaseAction.SENDBACK:
         if (caseRecord.status !== 'assigned') {
           throw new BadRequestException('Chỉ trả lại case khi đang ở trạng thái assigned')
@@ -64,7 +94,6 @@ export class CaseService {
         caseRecord.status = 'draft'
         await caseRecord.save()
         return { message: 'Đã trả bệnh án về trạng thái nháp' }
-
       default:
         throw new BadRequestException('Hành động không hợp lệ')
     }
@@ -113,22 +142,10 @@ export class CaseService {
   async findOne(id: string, user: JwtPayload) {
     validateObjectIdOrThrow(id, 'Bệnh án')
 
-    const record = await this.caseModel
-      .findById(id)
-      .populate('patient')
-      .populate('specialty')
-      .populate({
-        path: 'appointmentId',
-        populate: [{ path: 'doctor', populate: 'specialty' }, { path: 'patient' }],
-      })
-      .populate({
-        path: 'offers.createdBy',
-        select: 'fullName',
-      })
-      .lean()
+    const record = await this.caseModel.findById(id).lean()
 
     if (!record) throw new NotFoundException('Không tìm thấy bệnh án')
-    if (record.patient._id.toString() !== user.userId && user.role !== 'DOCTOR') {
+    if (record?.patient._id?.toString() !== user.userId && user.role !== 'DOCTOR') {
       throw new BadRequestException('Bạn không có quyền truy cập bệnh án này')
     }
 
@@ -169,7 +186,57 @@ export class CaseService {
       .sort({ updatedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate('specialty')
+      .populate({
+        path: 'appointmentId',
+        populate: [
+          // {
+          //   path: 'doctor',
+          //   select: 'fullName avatar',
+          // },
+          {
+            path: 'patient',
+            select: 'fullName avatar',
+          },
+        ],
+      })
+      .populate({ path: 'speciality', select: 'name' }) // đúng với schema
+      .lean()
+
+    // Đảm bảo mỗi case chỉ trả về patient là id (string)
+    const mappedData = (data || []).map(item => ({
+      ...item,
+      patient:
+        typeof item.patient === 'object' && item.patient?._id
+          ? item.patient._id.toString()
+          : item.patient?.toString?.() || item.patient,
+    }))
+
+    return { total, page, limit, data: mappedData }
+  }
+
+  async getAllCase(page = 1, limit = 10, q?: string, status?: CaseStatus) {
+    const filter: any = {
+      isDeleted: false,
+    }
+
+    if (q) {
+      filter.$or = [
+        { 'medicalForm.symptoms': { $regex: q, $options: 'i' } },
+        { 'medicalForm.note': { $regex: q, $options: 'i' } },
+      ]
+    }
+
+    if (status) {
+      filter.status = status
+    }
+
+    const total = await this.caseModel.countDocuments(filter)
+    const data = await this.caseModel
+      .find(filter)
+      .sort({ updatedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({ path: 'speciality', select: 'name' }) // đúng với schema
       .lean()
 
     return { total, page, limit, data }
