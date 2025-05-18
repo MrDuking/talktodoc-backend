@@ -7,7 +7,7 @@ import {
 } from '../doctor_levels_service/schemas/doctor-level.schema'
 import { Hospital, HospitalSchema } from '../hospitals_service/schemas'
 import { MailModule } from '../mail/mail.module'
-import { Speciality, SpecialitySchema } from '../speciality_service/schemas/speciality.schema'
+import { Specialty, SpecialtySchema } from '../specialty_service/schemas/specialty.schema'
 import { DoctorController } from './doctor/doctor.controller'
 import { EmployeeController } from './employee/employee.controller'
 import { PatientController } from './patient/patient.controller'
@@ -26,7 +26,7 @@ import { UsersService } from './user.service'
       { name: Doctor.name, schema: DoctorSchema },
       { name: Employee.name, schema: EmployeeSchema },
       { name: Patient.name, schema: PatientSchema },
-      { name: Speciality.name, schema: SpecialitySchema },
+      { name: Specialty.name, schema: SpecialtySchema },
       { name: Hospital.name, schema: HospitalSchema },
       { name: DoctorLevel.name, schema: DoctorLevelSchema },
     ]),

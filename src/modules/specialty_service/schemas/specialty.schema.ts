@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Model } from 'mongoose'
 
-export type SpecialityDocument = Speciality & Document
-export type SpecialityModel = Model<SpecialityDocument>
+export type SpecialtyDocument = Specialty & Document
+export type SpecialtyModel = Model<SpecialtyDocument>
 
 @Schema({ timestamps: true })
-export class Speciality {
+export class Specialty {
   @Prop({ unique: true })
   id!: string
 
@@ -25,16 +25,16 @@ export class Speciality {
   avatarUrl?: string
 }
 
-export const SpecialitySchema = SchemaFactory.createForClass(Speciality)
-SpecialitySchema.pre<SpecialityDocument>('save', async function (next) {
+export const SpecialtySchema = SchemaFactory.createForClass(Specialty)
+SpecialtySchema.pre<SpecialtyDocument>('save', async function (next) {
   if (!this.id) {
     let uniqueId
     let isUnique = false
-    const SpecialityModel = this.constructor as SpecialityModel
+    const SpecialtyModel = this.constructor as SpecialtyModel
 
     while (!isUnique) {
       uniqueId = `SP${Math.floor(100000 + Math.random() * 900000)}`
-      const existing = await SpecialityModel.findOne({ id: uniqueId })
+      const existing = await SpecialtyModel.findOne({ id: uniqueId })
       if (!existing) {
         isUnique = true
       }

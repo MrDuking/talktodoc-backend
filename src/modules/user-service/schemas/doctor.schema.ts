@@ -16,17 +16,17 @@ export type DoctorModel = Model<DoctorDocument>
 // ------------------ Availability Schema ------------------
 @Schema()
 class Availability {
-  @Prop({ required: true })
-  dayOfWeek!: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
+  @Prop({ required: false })
+  dayOfWeek?: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
 
-  @Prop({ required: true })
-  index!: number // thứ tự trong ngày (ca 1, ca 2...)
+  @Prop({ required: false })
+  index?: number // thứ tự trong ngày (ca 1, ca 2...)
 
-  @Prop({ required: true })
-  timeStart!: string // "08:00"
+  @Prop({ required: false })
+  timeStart?: string // "08:00"
 
-  @Prop({ required: true })
-  timeEnd!: string // "12:00"
+  @Prop({ required: false })
+  timeEnd?: string // "12:00"
 }
 
 // ------------------ Doctor Schema ------------------
@@ -38,7 +38,7 @@ export class Doctor extends BaseUser {
   @Prop({ default: UserRole.DOCTOR })
   role!: UserRole
 
-  @Prop({ type: [Types.ObjectId], required: true, ref: 'Speciality' })
+  @Prop({ type: [Types.ObjectId], required: true, ref: 'Specialty' })
   specialty!: Types.ObjectId[]
 
   @Prop({ type: Types.ObjectId, required: true, ref: 'Hospital' })

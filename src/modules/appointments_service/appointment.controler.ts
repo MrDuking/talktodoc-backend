@@ -20,6 +20,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { Request } from 'express'
 import { AppointmentService } from './appointment.service'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos'
+import { Appointment } from './schemas/appointment.schema'
 
 @ApiTags('Appointments')
 @ApiBearerAuth()
@@ -30,7 +31,10 @@ export class AppointmentController {
 
   @Post()
   @ApiOperation({ summary: 'Tạo mới lịch hẹn (liên kết với case)' })
-  async create(@Body() dto: CreateAppointmentDto, @Req() req: Request & { user?: JwtPayload }) {
+  async create(
+    @Body() dto: CreateAppointmentDto,
+    @Req() req: Request & { user?: JwtPayload },
+  ): Promise<Appointment> {
     const patientId = req.user?.userId
     if (!patientId) throw new UnauthorizedException('Không xác định được người dùng')
 
@@ -47,7 +51,7 @@ export class AppointmentController {
     @Query('q') q?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
-  ) {
+  ): Promise<{ total: number; page: number; limit: number; data: Appointment[] }> {
     const user = req.user
     if (!user) throw new UnauthorizedException('Token không hợp lệ')
     return this.appointmentService.findAppointments(user, q, +page, +limit)
@@ -55,20 +59,23 @@ export class AppointmentController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết lịch hẹn' })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<any> {
     return this.appointmentService.findOne(id)
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Cập nhật lịch hẹn' })
-  async update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAppointmentDto,
+  ): Promise<{ message: string }> {
     return this.appointmentService.update(id, dto)
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Xóa lịch hẹn (dành cho admin)' })
   @HttpCode(204)
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string): Promise<void> {
     await this.appointmentService.remove(id)
   }
 
@@ -80,7 +87,7 @@ export class AppointmentController {
     @Param('id') id: string,
     @Req() req: Request & { user?: JwtPayload },
     @Body('note') note?: string,
-  ) {
+  ): Promise<{ message: string }> {
     const doctorId = req.user?.userId
     if (!doctorId) throw new UnauthorizedException('Bác sĩ chưa xác thực')
     return this.appointmentService.confirmAppointment(id, doctorId, note)
@@ -94,16 +101,16 @@ export class AppointmentController {
     @Param('id') id: string,
     @Req() req: Request & { user?: JwtPayload },
     @Body('reason') reason: string,
-  ) {
+  ): Promise<{ message: string }> {
     const doctorId = req.user?.userId
     if (!doctorId) throw new UnauthorizedException('Bác sĩ chưa xác thực')
     return this.appointmentService.rejectAppointment(id, doctorId, reason)
   }
 
-  @Get('migrate-speciality')
+  @Get('migrate-specialty')
   @ApiOperation({ summary: 'Chuyển tất cả status về PENDING (dùng migrate)' })
   @ApiResponse({ status: 200, description: 'Đã migrate status thành công.' })
-  migrateSpeciality() {
+  migrateSpecialty(): Promise<void> {
     return this.appointmentService.migrateDefaultStatus()
   }
 }

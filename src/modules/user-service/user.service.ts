@@ -43,6 +43,7 @@ export class UsersService {
     if (!mongoose.Types.ObjectId.isValid(id))
       throw new BadRequestException('Invalid employee ID format')
     const employee = await this.employeeModel.findById(id).populate('specialty').exec()
+    console.log('employee', employee)
     if (!employee) throw new NotFoundException('Employee not found')
     return employee
   }
@@ -244,26 +245,32 @@ export class UsersService {
     const doctor = await this.doctorModel.findById(id)
     if (!doctor) throw new NotFoundException('Không tìm thấy bác sĩ')
 
-    doctor.availability = dto.availability.map(item => ({
-      dayOfWeek: item.dayOfWeek,
-      index: item.index,
-      timeStart: item.timeStart,
-      timeEnd: item.timeEnd,
-    }))
+    // Flatten từ availability[].timeSlot[] → mảng các slot kèm dayOfWeek
+    const flattened = dto.availability.flatMap(item =>
+      item.timeSlot.map(slot => ({
+        dayOfWeek: item.dayOfWeek,
+        index: slot.index,
+        timeStart: slot.timeStart,
+        timeEnd: slot.timeEnd,
+      })),
+    )
+
+    doctor.availability = flattened
     await doctor.save()
 
     return doctor
   }
-
   // ===================== PATIENT =====================
   async getAllPatients(): Promise<Patient[]> {
     return this.patientModel.find().exec()
   }
 
-  async getPatientById(id: string): Promise<Patient> {
-    if (!mongoose.Types.ObjectId.isValid(id))
+  async getPatientById(_id: string): Promise<Patient> {
+    console.log('id', _id)
+    if (!mongoose.Types.ObjectId.isValid(_id))
       throw new BadRequestException('Invalid patient ID format')
-    const patient = await this.patientModel.findById(id).exec()
+    const patient = await this.patientModel.findById(_id).exec()
+    console.log('patient', patient)
     if (!patient) throw new NotFoundException('Patient not found')
     return patient
   }
@@ -288,6 +295,12 @@ export class UsersService {
       throw new BadRequestException('Invalid patient ID format')
     const result = await this.patientModel.findByIdAndDelete(id).exec()
     if (!result) throw new NotFoundException('Patient not found')
+  }
+
+  async getPatientByCode(code: string): Promise<Patient> {
+    const patient = await this.patientModel.findOne({ id: code }).exec()
+    if (!patient) throw new NotFoundException('Patient not found')
+    return patient
   }
 
   // ===================== SEARCH =====================

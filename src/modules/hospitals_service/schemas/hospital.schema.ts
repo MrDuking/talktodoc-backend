@@ -18,7 +18,7 @@ export class Hospital {
   @Prop({ required: true })
   phoneNumber!: string
 
-  @Prop({ type: [String], required: true, ref: 'Speciality' })
+  @Prop({ type: [String], required: true, ref: 'Specialty' })
   specialty!: string[]
 
   @Prop({ default: false })

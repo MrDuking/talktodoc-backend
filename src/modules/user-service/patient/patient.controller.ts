@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,7 +12,9 @@ import {
   Query,
 } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
+import * as mongoose from 'mongoose'
 import { CreatePatientDto, UpdatePatientDto } from '../dtos/index'
+import { Patient } from '../schemas/patient.schema'
 import { UsersService } from '../user.service'
 
 @ApiTags('patients')
@@ -39,14 +42,16 @@ export class PatientController {
 
   @ApiOperation({ summary: 'Get all patients' })
   @Get()
-  findAllPatients() {
+  findAllPatients(): Promise<Patient[]> {
     return this.usersService.getAllPatients()
   }
 
   @ApiOperation({ summary: 'Get a patient by MongoDB _id' })
   @ApiParam({ name: '_id', description: 'Patient MongoDB _id' })
   @Get(':_id')
-  findPatientById(@Param('_id') id: string) {
+  findPatientById(@Param('_id') id: string): Promise<Patient> {
+    if (!mongoose.Types.ObjectId.isValid(id))
+      throw new BadRequestException('Invalid patient ID format')
     return this.usersService.getPatientById(id)
   }
 
@@ -54,7 +59,7 @@ export class PatientController {
   @ApiBody({ type: CreatePatientDto })
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  createPatient(@Body() createPatientDto: CreatePatientDto) {
+  createPatient(@Body() createPatientDto: CreatePatientDto): Promise<Patient> {
     return this.usersService.createPatient(createPatientDto)
   }
 
@@ -62,7 +67,10 @@ export class PatientController {
   @ApiParam({ name: '_id', description: 'Patient MongoDB _id' })
   @ApiBody({ type: UpdatePatientDto })
   @Put(':_id')
-  updatePatient(@Param('_id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
+  updatePatient(
+    @Param('_id') id: string,
+    @Body() updatePatientDto: UpdatePatientDto,
+  ): Promise<Patient> {
     return this.usersService.updatePatient(id, updatePatientDto)
   }
 
@@ -70,7 +78,7 @@ export class PatientController {
   @ApiParam({ name: '_id', description: 'Patient MongoDB _id' })
   @Delete(':_id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  deletePatient(@Param('_id') id: string) {
+  deletePatient(@Param('_id') id: string): Promise<void> {
     return this.usersService.deletePatient(id)
   }
 }

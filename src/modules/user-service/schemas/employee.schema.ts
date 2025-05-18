@@ -20,7 +20,7 @@ export class Employee extends BaseUser {
   @Prop({ required: false })
   department?: string
 
-  @Prop({ type: [Types.ObjectId], required: true, ref: 'Speciality' })
+  @Prop({ type: [Types.ObjectId], required: true, ref: 'Specialty' })
   specialty!: Types.ObjectId[]
 
   @Prop({ type: Date, required: false })

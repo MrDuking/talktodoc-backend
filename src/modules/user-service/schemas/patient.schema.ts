@@ -1,6 +1,6 @@
 import { UserRole } from '@common/enum/user_role.enum'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document, Model, Types } from 'mongoose'
+import { Document, Model } from 'mongoose'
 import { BaseUser } from './base-user.schema'
 
 export type PatientDocument = Patient & Document
@@ -39,9 +39,6 @@ class Appointment {
 export class Patient extends BaseUser {
   @Prop({ unique: true })
   id!: string
-
-  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
-  _id?: Types.ObjectId
 
   @Prop({ default: UserRole.PATIENT })
   role!: UserRole

@@ -15,7 +15,7 @@ import { MedicineModule } from './modules/medicines_service/medicines.module'
 import { OtpModule } from './modules/otp_service/otp.module'
 import { PaymentModule } from './modules/payment_serivce/payment.module'
 import { PharmacyModule } from './modules/pharmacy_service/pharmacy.module'
-import { SpecialityModule } from './modules/speciality_service/speciality.module'
+import { SpecialtyModule } from './modules/specialty_service/specialty.module'
 import { UsersModule } from './modules/user-service/user.module'
 
 @Module({
@@ -37,7 +37,7 @@ import { UsersModule } from './modules/user-service/user.module'
     MailModule,
     AuthModule,
     PharmacyModule,
-    SpecialityModule,
+    SpecialtyModule,
     DoctorLevelModule,
     MedicineModule,
     HospitalModule,

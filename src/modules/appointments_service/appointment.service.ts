@@ -86,7 +86,7 @@ export class AppointmentService {
 
     const appointment = new this.appointmentModel({
       appointmentId,
-      patient,
+      patient: new mongoose.Types.ObjectId(patient),
       doctor,
       specialty,
       date,
@@ -102,6 +102,12 @@ export class AppointmentService {
 
     return savedAppointment
   }
+
+  // Lý do doctor và specialty có thể populate data còn patient thì không:
+  // - Trong Mongoose, populate chỉ hoạt động nếu trường đó là một ObjectId tham chiếu (ref) đến một collection khác.
+  // - Thông thường, doctor và specialty được định nghĩa là ref đến collection Doctor và Specialty, nên populate sẽ lấy được dữ liệu chi tiết.
+  // - Nếu patient chỉ lưu dưới dạng string, hoặc không phải là ObjectId ref đến collection Patient, thì populate sẽ không hoạt động.
+  // - Để populate được patient, cần đảm bảo trường patient trong schema Appointment là kiểu ObjectId và có ref: 'Patient'.
 
   async findAppointments(
     user: JwtPayload,
@@ -119,13 +125,11 @@ export class AppointmentService {
     const data = await this.appointmentModel
       .find(filter)
       .populate({
-        path: 'patient',
-      })
-      .populate({
         path: 'doctor',
         populate: { path: 'specialty' },
       })
       .populate('specialty')
+      .populate('patient')
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 })
@@ -137,10 +141,7 @@ export class AppointmentService {
   async findOne(id: string): Promise<AppointmentResponse> {
     const appointment = await this.appointmentModel
       .findById(id)
-      .populate({
-        path: 'patient',
-        select: 'fullName avatar',
-      })
+
       .populate({
         path: 'doctor',
         populate: ['specialty', 'rank'],
@@ -170,10 +171,31 @@ export class AppointmentService {
     }
   }
 
-  async update(id: string, updateDto: UpdateAppointmentDto): Promise<Appointment> {
-    const updated = await this.appointmentModel.findByIdAndUpdate(id, updateDto, { new: true })
-    if (!updated) throw new NotFoundException('Không tìm thấy lịch hẹn')
-    return updated
+  async update(id: string, updateDto: UpdateAppointmentDto): Promise<{ message: string }> {
+    const appointment = await this.appointmentModel.findById(id)
+    if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
+
+    // Nếu có payment, merge từng field vào payment cũ
+    if (updateDto.payment) {
+      appointment.payment = {
+        ...appointment.payment,
+        ...updateDto.payment,
+      } as typeof appointment.payment
+      // Xóa payment khỏi updateDto để tránh ghi đè toàn bộ
+      delete updateDto.payment
+    }
+
+    // Cập nhật các field khác
+    const rest = updateDto as Partial<Appointment>
+    Object.keys(rest).forEach(key => {
+      if (key !== 'payment' && rest[key as keyof typeof rest] !== undefined) {
+        // @ts-expect-error: Gán động field cho appointment do DTO có thể chứa các field không khai báo rõ ràng trong type
+        appointment[key] = rest[key as keyof typeof rest]
+      }
+    })
+
+    await appointment.save()
+    return { message: 'Lịch hẹn đã được cập nhật' }
   }
 
   async remove(id: string): Promise<{ message: string }> {
@@ -212,6 +234,7 @@ export class AppointmentService {
     await appointment.save()
 
     const patient = await this.appointmentModel.findById(id).populate('patient')
+    console.log('patient', patient)
     if (patient?.patient?.email) {
       await this.mailService.sendTemplateMail({
         to: patient.patient.email,

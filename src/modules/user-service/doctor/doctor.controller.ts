@@ -13,8 +13,9 @@ import {
 } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { CreateDoctorDto, SubmitRatingDto, UpdateDoctorDto } from '../dtos/index'
-import { UsersService } from '../user.service'
 import { SetAvailabilityDto } from '../dtos/set-availability.dto'
+import { Doctor } from '../schemas/doctor.schema'
+import { UsersService } from '../user.service'
 @ApiTags('doctors')
 @Controller('api/v1/doctors')
 export class DoctorController {
@@ -56,7 +57,7 @@ export class DoctorController {
   @ApiResponse({ status: 404, description: 'Doctor not found.' })
   @ApiParam({ name: '_id', description: 'Doctor MongoDB _id' })
   @Get(':_id')
-  findDoctorById(@Param('_id') id: string) {
+  findDoctorById(@Param('_id') id: string): Promise<Doctor> {
     return this.usersService.getDoctorById(id)
   }
 
@@ -87,20 +88,20 @@ export class DoctorController {
     return this.usersService.deleteDoctor(id)
   }
 
-  @Patch(':_id/submit-rating')
+  @Patch(':_id/rating')
   @ApiOperation({ summary: 'Bệnh nhân đánh giá bác sĩ sau cuộc hẹn' })
-  submitRating(@Param('_id') id: string, @Body() dto: SubmitRatingDto) {
+  submitRating(
+    @Param('_id') id: string,
+    @Body() dto: SubmitRatingDto,
+  ): Promise<{ message: string }> {
+    console.log('dto', dto)
     return this.usersService.submitDoctorRating(id, dto)
   }
 
   @Patch(':_id/set-availability')
-@ApiOperation({ summary: 'Bác sĩ cập nhật lịch làm việc trong tuần' })
-@ApiBody({ type: SetAvailabilityDto })
-setAvailability(
-  @Param('_id') id: string,
-  @Body() dto: SetAvailabilityDto,
-) {
-  return this.usersService.setDoctorAvailability(id, dto)
-}
-
+  @ApiOperation({ summary: 'Bác sĩ cập nhật lịch làm việc trong tuần' })
+  @ApiBody({ type: SetAvailabilityDto })
+  setAvailability(@Param('_id') id: string, @Body() dto: SetAvailabilityDto): Promise<Doctor> {
+    return this.usersService.setDoctorAvailability(id, dto)
+  }
 }

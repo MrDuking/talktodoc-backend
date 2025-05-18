@@ -19,7 +19,7 @@ export class CreateHospitalDto {
 
   @ApiProperty({
     example: ['65f7d17d3b2f5c0012e3e7b9', '65f7d18d3b2f5c0012e3e7c0'],
-    description: 'List of specialties (IDs of Speciality)',
+    description: 'List of specialties (IDs of Specialty)',
     required: true,
   })
   @IsArray()

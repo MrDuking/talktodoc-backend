@@ -6,13 +6,13 @@ export class Appointment extends Document {
   @Prop({ required: true, unique: true })
   appointmentId!: string
 
-  @Prop({ type: Types.ObjectId, ref: 'Patient', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'Patient' })
   patient!: Types.ObjectId | any
 
   @Prop({ type: Types.ObjectId, ref: 'Doctor' })
   doctor!: Types.ObjectId | any
 
-  @Prop({ type: Types.ObjectId, ref: 'Speciality', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'Specialty' })
   specialty!: Types.ObjectId | any
 
   @Prop({})

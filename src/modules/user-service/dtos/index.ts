@@ -1,4 +1,4 @@
-export * from '../../speciality_service/dtos/speciality.dto'
+export * from '../../specialty_service/dtos/specialty.dto'
 export * from './create-doctor.dto'
 export * from './create-employee.dto'
 export * from './create-patient.dto'

@@ -13,7 +13,7 @@ export class StringeeService {
     }
 
     const now = Math.floor(Date.now() / 1000)
-    const exp = now + 3600 // Token sống 1 giờ
+    const exp = now + 36000 // Token sống 10 giờ
 
     const payload = {
       jti: `${process.env.STRINGEE_KEY_SID}-${now}`,

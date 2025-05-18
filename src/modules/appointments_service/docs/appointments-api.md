@@ -209,7 +209,7 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
 
 ## 8. Migrate status (dev tool)
 
-- **Endpoint:** `GET /appointments/migrate-speciality`
+- **Endpoint:** `GET /appointments/migrate-specialty`
 - **Yêu cầu xác thực:** Bearer Token
 - **Response:**
 

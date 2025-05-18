@@ -255,7 +255,7 @@ export class PaymentService {
       const patients = await this.usersService.findManyPatientsByIds(patientIds)
 
       return orders.map(order => {
-        const userInfo = patients.find(p => p._id?.toString() === order.patient)
+        const userInfo = patients.find(p => p.id === order.patient)
         const name = userInfo?.fullName || 'Unknown'
         const email = userInfo?.email || 'Unknown'
         return {

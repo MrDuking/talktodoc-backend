@@ -33,11 +33,8 @@ export class CaseService {
 
   async submitData(dto: SubmitCaseDto, user: JwtPayload) {
     const { case_id, appointment_id, medical_form, action, specialty } = dto as any
-
-    if (
-      (!case_id || case_id === '') &&
-      (action === CaseAction.CREATE || action === CaseAction.SAVE)
-    ) {
+    console.log('dto', dto)
+    if ((!case_id || case_id === '') && action === CaseAction.CREATE) {
       if (!specialty) throw new BadRequestException('Chuyên khoa là bắt buộc')
       validateObjectIdOrThrow(specialty, 'Chuyên khoa')
       const newCase = new this.caseModel({
@@ -51,8 +48,10 @@ export class CaseService {
       await newCase.save()
       return {
         message: 'Tạo bệnh án thành công',
-        case_id: newCase._id,
-        ...newCase.toObject(),
+        data: {
+          case_id: newCase._id,
+          ...newCase.toObject(),
+        },
       }
     }
 
@@ -64,15 +63,16 @@ export class CaseService {
     }
 
     switch (action) {
-      case CaseAction.CREATE:
-        caseRecord.patient = new Types.ObjectId(user.userId)
-        caseRecord.status = 'draft'
-        await caseRecord.save()
-        return { message: 'Đã tạo bệnh án mới' }
       case CaseAction.SAVE:
         if (medical_form) caseRecord.medicalForm = medical_form
         await caseRecord.save()
-        return { message: 'Đã lưu bệnh án tạm thời' }
+        return {
+          message: 'Đã lưu bệnh án tạm thời',
+          data: {
+            case_id: caseRecord._id,
+            ...caseRecord.toObject(),
+          },
+        }
       case CaseAction.SUBMIT:
         if (caseRecord.status === 'draft') {
           if (!appointment_id) throw new BadRequestException('Vui lòng chọn lịch hẹn trước')
@@ -86,14 +86,26 @@ export class CaseService {
           throw new BadRequestException('Không thể submit ở trạng thái hiện tại')
         }
         await caseRecord.save()
-        return { message: 'Cập nhật bệnh án thành công' }
+        return {
+          message: 'Cập nhật bệnh án thành công',
+          data: {
+            case_id: caseRecord._id,
+            ...caseRecord.toObject(),
+          },
+        }
       case CaseAction.SENDBACK:
         if (caseRecord.status !== 'assigned') {
           throw new BadRequestException('Chỉ trả lại case khi đang ở trạng thái assigned')
         }
         caseRecord.status = 'draft'
         await caseRecord.save()
-        return { message: 'Đã trả bệnh án về trạng thái nháp' }
+        return {
+          message: 'Đã trả bệnh án về trạng thái nháp',
+          data: {
+            case_id: caseRecord._id,
+            ...caseRecord.toObject(),
+          },
+        }
       default:
         throw new BadRequestException('Hành động không hợp lệ')
     }
@@ -199,7 +211,7 @@ export class CaseService {
           },
         ],
       })
-      .populate({ path: 'speciality', select: 'name' }) // đúng với schema
+      .populate({ path: 'specialty', select: 'name' }) // đúng với schema
       .lean()
 
     // Đảm bảo mỗi case chỉ trả về patient là id (string)
@@ -236,7 +248,7 @@ export class CaseService {
       .sort({ updatedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate({ path: 'speciality', select: 'name' }) // đúng với schema
+      .populate({ path: 'specialty', select: 'name' }) // đúng với schema
       .lean()
 
     return { total, page, limit, data }
