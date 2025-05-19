@@ -15,18 +15,24 @@ export type DoctorModel = Model<DoctorDocument>
 
 // ------------------ Availability Schema ------------------
 @Schema()
+class TimeSlot {
+  @Prop({ required: true })
+  index!: number // thứ tự trong ngày (ca 1, ca 2...)
+
+  @Prop({ required: true })
+  timeStart!: string // "08:00"
+
+  @Prop({ required: true })
+  timeEnd!: string // "12:00"
+}
+
+@Schema()
 class Availability {
-  @Prop({ required: false })
-  dayOfWeek?: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
+  @Prop({ required: true })
+  dayOfWeek!: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
 
-  @Prop({ required: false })
-  index?: number // thứ tự trong ngày (ca 1, ca 2...)
-
-  @Prop({ required: false })
-  timeStart?: string // "08:00"
-
-  @Prop({ required: false })
-  timeEnd?: string // "12:00"
+  @Prop({ type: [TimeSlot], default: [] })
+  timeSlot!: TimeSlot[]
 }
 
 // ------------------ Doctor Schema ------------------

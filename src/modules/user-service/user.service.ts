@@ -245,17 +245,21 @@ export class UsersService {
     const doctor = await this.doctorModel.findById(id)
     if (!doctor) throw new NotFoundException('Không tìm thấy bác sĩ')
 
-    // Flatten từ availability[].timeSlot[] → mảng các slot kèm dayOfWeek
-    const flattened = dto.availability.flatMap(item =>
-      item.timeSlot.map(slot => ({
-        dayOfWeek: item.dayOfWeek,
-        index: slot.index,
-        timeStart: slot.timeStart,
-        timeEnd: slot.timeEnd,
-      })),
-    )
+    // Validate và sắp xếp lịch làm việc
+    const sortedAvailability = dto.availability
+      .map(day => ({
+        dayOfWeek: day.dayOfWeek,
+        timeSlot: day.timeSlot
+          .sort((a, b) => a.index - b.index)
+          .map(slot => ({
+            index: slot.index,
+            timeStart: slot.timeStart,
+            timeEnd: slot.timeEnd,
+          })),
+      }))
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
 
-    doctor.availability = flattened
+    doctor.availability = sortedAvailability
     await doctor.save()
 
     return doctor

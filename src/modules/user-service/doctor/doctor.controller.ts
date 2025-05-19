@@ -101,7 +101,26 @@ export class DoctorController {
   @Patch(':_id/set-availability')
   @ApiOperation({ summary: 'Bác sĩ cập nhật lịch làm việc trong tuần' })
   @ApiBody({ type: SetAvailabilityDto })
-  setAvailability(@Param('_id') id: string, @Body() dto: SetAvailabilityDto): Promise<Doctor> {
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật lịch làm việc thành công',
+    type: Doctor,
+  })
+  async setAvailability(
+    @Param('_id') id: string,
+    @Body() dto: SetAvailabilityDto,
+  ): Promise<Doctor> {
     return this.usersService.setDoctorAvailability(id, dto)
+  }
+
+  @Get(':_id/availability')
+  @ApiOperation({ summary: 'Lấy lịch làm việc của bác sĩ' })
+  @ApiResponse({
+    status: 200,
+    description: 'Trả về lịch làm việc của bác sĩ',
+    type: Doctor,
+  })
+  async getAvailability(@Param('_id') id: string): Promise<Doctor> {
+    return this.usersService.getDoctorById(id)
   }
 }
