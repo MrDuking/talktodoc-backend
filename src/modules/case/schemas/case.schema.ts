@@ -21,7 +21,7 @@ export class Case {
 
   @Prop({
     type: String,
-    enum: ['draft', 'pending', 'assigned', 'completed'],
+    enum: ['draft', 'pending', 'assigned', 'completed', 'cancelled'],
     default: 'draft',
   })
   status!: CaseStatus

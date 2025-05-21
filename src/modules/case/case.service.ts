@@ -201,13 +201,11 @@ export class CaseService {
       .populate({
         path: 'appointmentId',
         populate: [
-          // {
-          //   path: 'doctor',
-          //   select: 'fullName avatar',
-          // },
+          {
+            path: 'doctor',
+          },
           {
             path: 'patient',
-            select: 'fullName avatar',
           },
         ],
       })

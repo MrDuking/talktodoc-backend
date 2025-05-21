@@ -28,8 +28,8 @@ class TimeSlot {
 
 @Schema()
 class Availability {
-  @Prop({ required: true })
-  dayOfWeek!: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
+  @Prop({ required: false })
+  dayOfWeek?: number // 0 = Chủ nhật, 1 = Thứ hai, ..., 6 = Thứ bảy
 
   @Prop({ type: [TimeSlot], default: [] })
   timeSlot!: TimeSlot[]

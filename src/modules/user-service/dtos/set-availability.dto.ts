@@ -19,7 +19,7 @@ export class TimeSlotDto {
 export class DayAvailabilityDto {
   @ApiProperty({ description: 'Thứ trong tuần (0 = CN, 1 = T2, ..., 6 = T7)', example: 1 })
   @IsNumber()
-  dayOfWeek!: number
+  dayOfWeek?: number
 
   @ApiProperty({ type: [TimeSlotDto], description: 'Danh sách các ca làm việc trong ngày' })
   @IsArray()

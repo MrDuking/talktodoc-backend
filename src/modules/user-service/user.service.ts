@@ -257,7 +257,7 @@ export class UsersService {
             timeEnd: slot.timeEnd,
           })),
       }))
-      .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+      .sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0))
 
     doctor.availability = sortedAvailability
     await doctor.save()
