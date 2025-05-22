@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
+import { BadRequestException } from '@nestjs/common'
 
-export type CaseStatus = 'draft' | 'pending' | 'assigned' | 'completed'
+export type CaseStatus = 'draft' | 'pending' | 'assigned' | 'completed' | 'cancelled'
 
 export type CaseDocument = Case & Document
 
@@ -67,3 +68,9 @@ export class Case {
 }
 
 export const CaseSchema = SchemaFactory.createForClass(Case)
+
+function validateObjectIdOrThrow(id: string, label = 'ID') {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new BadRequestException(`${label} không hợp lệ`)
+  }
+}

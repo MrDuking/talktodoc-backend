@@ -195,6 +195,15 @@ export class AppointmentService {
     })
 
     await appointment.save()
+
+    // Nếu appointment được hoàn thành, cập nhật case
+    if (appointment.status === 'COMPLETED') {
+      await this.caseModel.findOneAndUpdate(
+        { appointmentId: appointment._id },
+        { $set: { status: 'completed' } }
+      )
+    }
+
     return { message: 'Lịch hẹn đã được cập nhật' }
   }
 
@@ -233,8 +242,13 @@ export class AppointmentService {
     if (note) appointment.doctorNote = note
     await appointment.save()
 
+    // Cập nhật trạng thái case
+    await this.caseModel.findOneAndUpdate(
+      { appointmentId: appointment._id },
+      { $set: { status: 'assigned' } }
+    )
+
     const patient = await this.appointmentModel.findById(id).populate('patient')
-    console.log('patient', patient)
     if (patient?.patient?.email) {
       await this.mailService.sendTemplateMail({
         to: patient.patient.email,
@@ -265,7 +279,7 @@ export class AppointmentService {
           link: 'https://www.talktodoc.online/',
         },
       })
-      console.log('Email đã được gửi cho bác sĩ')
+      this.logger.log('Email đã được gửi cho bác sĩ')
     }
     return { message: 'Lịch hẹn đã được xác nhận và email đã được gửi.' }
   }
@@ -304,6 +318,12 @@ export class AppointmentService {
     appointment.doctorNote = reason
     await appointment.save()
 
+    // Cập nhật trạng thái case
+    await this.caseModel.findOneAndUpdate(
+      { appointmentId: appointment._id },
+      { $set: { status: 'cancelled' } }
+    )
+
     const patient = appointment.patient
 
     if (patient?.email) {
@@ -337,7 +357,7 @@ export class AppointmentService {
           link: 'https://www.talktodoc.online/',
         },
       })
-      console.log('Email đã được gửi cho bác sĩ')
+      this.logger.log('Email đã được gửi cho bác sĩ')
     }
 
     return { message: 'Lịch hẹn đã được từ chối và email đã được gửi.' }

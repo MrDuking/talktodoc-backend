@@ -1,6 +1,6 @@
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface'
 import { Medicine, MedicineDocument } from '@/modules/medicines_service/schemas/medicines.schema'
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import moment from 'moment'
 import { Model, Types } from 'mongoose'
@@ -8,6 +8,7 @@ import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
 import { CaseAction } from './enum/case-action.enum'
 import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
+import { AppointmentService } from '@/modules/appointments_service/appointment.service'
 
 interface PopulatedUser {
   fullName: string
@@ -26,17 +27,24 @@ function validateObjectIdOrThrow(id: string, label = 'ID') {
 
 @Injectable()
 export class CaseService {
+  private readonly logger = new Logger(CaseService.name)
+
   constructor(
     @InjectModel(Case.name) private readonly caseModel: Model<CaseDocument>,
     @InjectModel(Medicine.name) private readonly medicineModel: Model<MedicineDocument>,
-  ) {}
+    private readonly appointmentService: AppointmentService,
+  ) { }
 
   async submitData(dto: SubmitCaseDto, user: JwtPayload) {
-    const { case_id, appointment_id, medical_form, action, specialty } = dto as any
     console.log('dto', dto)
+    const { case_id, appointment_id, medical_form, action, specialty } = dto as any
+    this.logger.log(`Xử lý case với action ${action}`)
+
+    // CREATE: Tạo mới case
     if ((!case_id || case_id === '') && action === CaseAction.CREATE) {
       if (!specialty) throw new BadRequestException('Chuyên khoa là bắt buộc')
       validateObjectIdOrThrow(specialty, 'Chuyên khoa')
+      console.log('specialty', specialty)
       const newCase = new this.caseModel({
         patient: user.userId,
         specialty,
@@ -46,6 +54,8 @@ export class CaseService {
         isDeleted: false,
       })
       await newCase.save()
+
+      this.logger.log(`Đã tạo case mới với ID ${newCase._id}`)
       return {
         message: 'Tạo bệnh án thành công',
         data: {
@@ -54,7 +64,8 @@ export class CaseService {
         },
       }
     }
-
+    console.log('case_id', case_id)
+    // Validate case_id và lấy thông tin case
     validateObjectIdOrThrow(case_id, 'Bệnh án')
     const caseRecord = await this.caseModel.findById(case_id)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
@@ -62,53 +73,156 @@ export class CaseService {
       throw new BadRequestException('Bạn không có quyền cập nhật case này')
     }
 
+    // Xử lý các action
     switch (action) {
       case CaseAction.SAVE:
-        if (medical_form) caseRecord.medicalForm = medical_form
-        await caseRecord.save()
-        return {
-          message: 'Đã lưu bệnh án tạm thời',
-          data: {
-            case_id: caseRecord._id,
-            ...caseRecord.toObject(),
-          },
-        }
+        return await this.handleSaveAction(caseRecord, medical_form)
+
       case CaseAction.SUBMIT:
-        if (caseRecord.status === 'draft') {
-          if (!appointment_id) throw new BadRequestException('Vui lòng chọn lịch hẹn trước')
-          validateObjectIdOrThrow(appointment_id, 'Lịch hẹn')
-          caseRecord.appointmentId = new Types.ObjectId(appointment_id)
-          caseRecord.status = 'pending'
-        } else if (caseRecord.status === 'assigned') {
-          if (medical_form) caseRecord.medicalForm = medical_form
-          caseRecord.status = 'completed'
-        } else {
-          throw new BadRequestException('Không thể submit ở trạng thái hiện tại')
-        }
-        await caseRecord.save()
-        return {
-          message: 'Cập nhật bệnh án thành công',
-          data: {
-            case_id: caseRecord._id,
-            ...caseRecord.toObject(),
-          },
-        }
+        console.log('appointment_id', appointment_id)
+        return await this.handleSubmitAction(caseRecord, appointment_id, medical_form)
+
       case CaseAction.SENDBACK:
-        if (caseRecord.status !== 'assigned') {
-          throw new BadRequestException('Chỉ trả lại case khi đang ở trạng thái assigned')
-        }
-        caseRecord.status = 'draft'
-        await caseRecord.save()
-        return {
-          message: 'Đã trả bệnh án về trạng thái nháp',
-          data: {
-            case_id: caseRecord._id,
-            ...caseRecord.toObject(),
-          },
-        }
+        return await this.handleSendbackAction(caseRecord)
+
       default:
         throw new BadRequestException('Hành động không hợp lệ')
     }
+  }
+
+  private async handleSaveAction(caseRecord: CaseDocument, medical_form?: any) {
+    if (caseRecord.status !== 'draft') {
+      throw new BadRequestException('Chỉ có thể lưu tạm khi ở trạng thái nháp')
+    }
+
+    if (medical_form) caseRecord.medicalForm = medical_form
+    await caseRecord.save()
+
+    this.logger.log(`Đã lưu tạm case ${caseRecord._id}`)
+    return {
+      message: 'Đã lưu bệnh án tạm thời',
+      data: {
+        case_id: caseRecord._id,
+        ...caseRecord.toObject(),
+      },
+    }
+  }
+
+  private async handleSubmitAction(
+    caseRecord: CaseDocument,
+    appointment_id?: string,
+    medical_form?: any
+  ) {
+    console.log('caseRecord.status', caseRecord.status)
+    switch (caseRecord.status) {
+      case 'draft':
+        if (!appointment_id) {
+          throw new BadRequestException('Vui lòng chọn lịch hẹn trước')
+        }
+        console.log('appointment_id', appointment_id)
+        validateObjectIdOrThrow(appointment_id, 'Lịch hẹn')
+
+        // Kiểm tra và liên kết với appointment
+        const appointment = await this.appointmentService.findOne(appointment_id)
+        if (!appointment) {
+          throw new NotFoundException('Không tìm thấy lịch hẹn')
+        }
+
+        caseRecord.appointmentId = new Types.ObjectId(appointment_id)
+        caseRecord.status = 'pending'
+        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái pending`)
+        break
+
+      case 'pending':
+        // Kiểm tra trạng thái của appointment
+        if (!caseRecord.appointmentId) {
+          throw new BadRequestException('Case chưa được liên kết với appointment')
+        }
+        
+        const pendingAppointment = await this.appointmentService.findOne(caseRecord.appointmentId.toString())
+        if (!pendingAppointment) {
+          throw new NotFoundException('Không tìm thấy lịch hẹn liên kết')
+        }
+        
+        if (pendingAppointment.status !== 'CONFIRMED') {
+          throw new BadRequestException('Lịch hẹn chưa được bác sĩ xác nhận')
+        }
+
+        if (medical_form) caseRecord.medicalForm = medical_form
+        caseRecord.status = 'assigned'
+        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái assigned`)
+        break
+
+      case 'assigned':
+        // Kiểm tra trạng thái appointment
+        if (caseRecord?.appointmentId) {
+          const appointment = await this.appointmentService.findOne(caseRecord.appointmentId.toString())
+          if (appointment.status !== 'COMPLETED') {
+            throw new BadRequestException('Lịch hẹn chưa được hoàn tất')
+          }
+        }
+
+        if (medical_form) caseRecord.medicalForm = medical_form
+        caseRecord.status = 'completed'
+        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái completed`)
+        break
+
+      default:
+        throw new BadRequestException('Không thể submit ở trạng thái hiện tại')
+    }
+
+    await caseRecord.save()
+    return {
+      message: 'Cập nhật bệnh án thành công',
+      data: {
+        case_id: caseRecord._id,
+        ...caseRecord.toObject(),
+      },
+    }
+  }
+
+  private async handleSendbackAction(caseRecord: CaseDocument) {
+    if (caseRecord.status !== 'assigned') {
+      throw new BadRequestException('Chỉ trả lại case khi đang ở trạng thái assigned')
+    }
+
+    caseRecord.status = 'draft'
+    await caseRecord.save()
+
+    this.logger.log(`Case ${caseRecord._id} đã được trả về trạng thái draft`)
+    return {
+      message: 'Đã trả bệnh án về trạng thái nháp',
+      data: {
+        case_id: caseRecord._id,
+        ...caseRecord.toObject(),
+      },
+    }
+  }
+
+  // Phương thức để cập nhật case khi appointment thay đổi
+  async updateCaseStatusByAppointment(appointmentId: string, appointmentStatus: string) {
+    const caseRecord = await this.caseModel.findOne({ appointmentId: new Types.ObjectId(appointmentId) })
+    if (!caseRecord) {
+      this.logger.warn(`Không tìm thấy case cho appointment ${appointmentId}`)
+      return
+    }
+
+    switch (appointmentStatus) {
+      case 'CONFIRMED':
+        if (caseRecord.status === 'pending') {
+          caseRecord.status = 'assigned'
+          this.logger.log(`Case ${caseRecord._id} tự động chuyển sang assigned do appointment được xác nhận`)
+        }
+        break
+
+      case 'COMPLETED':
+        if (caseRecord.status === 'assigned') {
+          this.logger.log(`Appointment ${appointmentId} đã hoàn thành, case ${caseRecord._id} có thể chuyển sang completed`)
+        }
+        break
+    }
+
+    await caseRecord.save()
   }
 
   async addOffer(caseId: string, doctorId: string, dto: AddOfferDto) {
@@ -152,6 +266,7 @@ export class CaseService {
   }
 
   async findOne(id: string, user: JwtPayload) {
+    console.log('id', id)
     validateObjectIdOrThrow(id, 'Bệnh án')
 
     const record = await this.caseModel.findById(id).lean()

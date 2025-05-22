@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { CaseController } from './case.controller'
 import { CaseService } from './case.service'
 import { Case, CaseSchema } from './schemas/case.schema'
+import { AppointmentModule } from '@/modules/appointments_service/appointment.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { Case, CaseSchema } from './schemas/case.schema'
     ]),
     MedicineModule,
     AuthModule,
+    AppointmentModule,
   ],
   controllers: [CaseController],
   providers: [CaseService],
