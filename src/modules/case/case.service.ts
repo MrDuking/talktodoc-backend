@@ -1,3 +1,4 @@
+import { AppointmentService } from '@/modules/appointments_service/appointment.service'
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface'
 import { Medicine, MedicineDocument } from '@/modules/medicines_service/schemas/medicines.schema'
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
@@ -8,7 +9,6 @@ import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
 import { CaseAction } from './enum/case-action.enum'
 import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
-import { AppointmentService } from '@/modules/appointments_service/appointment.service'
 
 interface PopulatedUser {
   fullName: string
@@ -33,7 +33,7 @@ export class CaseService {
     @InjectModel(Case.name) private readonly caseModel: Model<CaseDocument>,
     @InjectModel(Medicine.name) private readonly medicineModel: Model<MedicineDocument>,
     private readonly appointmentService: AppointmentService,
-  ) { }
+  ) {}
 
   async submitData(dto: SubmitCaseDto, user: JwtPayload) {
     console.log('dto', dto)
@@ -111,7 +111,7 @@ export class CaseService {
   private async handleSubmitAction(
     caseRecord: CaseDocument,
     appointment_id?: string,
-    medical_form?: any
+    medical_form?: any,
   ) {
     console.log('caseRecord.status', caseRecord.status)
     switch (caseRecord.status) {
@@ -138,12 +138,14 @@ export class CaseService {
         if (!caseRecord.appointmentId) {
           throw new BadRequestException('Case chưa được liên kết với appointment')
         }
-        
-        const pendingAppointment = await this.appointmentService.findOne(caseRecord.appointmentId.toString())
+
+        const pendingAppointment = await this.appointmentService.findOne(
+          caseRecord.appointmentId.toString(),
+        )
         if (!pendingAppointment) {
           throw new NotFoundException('Không tìm thấy lịch hẹn liên kết')
         }
-        
+
         if (pendingAppointment.status !== 'CONFIRMED') {
           throw new BadRequestException('Lịch hẹn chưa được bác sĩ xác nhận')
         }
@@ -156,7 +158,9 @@ export class CaseService {
       case 'assigned':
         // Kiểm tra trạng thái appointment
         if (caseRecord?.appointmentId) {
-          const appointment = await this.appointmentService.findOne(caseRecord.appointmentId.toString())
+          const appointment = await this.appointmentService.findOne(
+            caseRecord.appointmentId.toString(),
+          )
           if (appointment.status !== 'COMPLETED') {
             throw new BadRequestException('Lịch hẹn chưa được hoàn tất')
           }
@@ -201,7 +205,9 @@ export class CaseService {
 
   // Phương thức để cập nhật case khi appointment thay đổi
   async updateCaseStatusByAppointment(appointmentId: string, appointmentStatus: string) {
-    const caseRecord = await this.caseModel.findOne({ appointmentId: new Types.ObjectId(appointmentId) })
+    const caseRecord = await this.caseModel.findOne({
+      appointmentId: new Types.ObjectId(appointmentId),
+    })
     if (!caseRecord) {
       this.logger.warn(`Không tìm thấy case cho appointment ${appointmentId}`)
       return
@@ -211,13 +217,17 @@ export class CaseService {
       case 'CONFIRMED':
         if (caseRecord.status === 'pending') {
           caseRecord.status = 'assigned'
-          this.logger.log(`Case ${caseRecord._id} tự động chuyển sang assigned do appointment được xác nhận`)
+          this.logger.log(
+            `Case ${caseRecord._id} tự động chuyển sang assigned do appointment được xác nhận`,
+          )
         }
         break
 
       case 'COMPLETED':
         if (caseRecord.status === 'assigned') {
-          this.logger.log(`Appointment ${appointmentId} đã hoàn thành, case ${caseRecord._id} có thể chuyển sang completed`)
+          this.logger.log(
+            `Appointment ${appointmentId} đã hoàn thành, case ${caseRecord._id} có thể chuyển sang completed`,
+          )
         }
         break
     }
@@ -269,11 +279,33 @@ export class CaseService {
     console.log('id', id)
     validateObjectIdOrThrow(id, 'Bệnh án')
 
-    const record = await this.caseModel.findById(id).lean()
+    const record = await this.caseModel
+      .findById(id)
+      .populate({
+        path: 'appointmentId',
+        populate: [
+          {
+            path: 'doctor',
+          },
+          {
+            path: 'patient',
+          },
+        ],
+      })
+      .lean()
 
     if (!record) throw new NotFoundException('Không tìm thấy bệnh án')
-    if (record?.patient._id?.toString() !== user.userId && user.role !== 'DOCTOR') {
-      throw new BadRequestException('Bạn không có quyền truy cập bệnh án này')
+
+    // Kiểm tra quyền truy cập
+    if (user.role === 'PATIENT') {
+      if (record.patient.toString() !== user.userId) {
+        throw new BadRequestException('Bạn không có quyền truy cập bệnh án này')
+      }
+    } else if (user.role === 'DOCTOR') {
+      const appointment = record.appointmentId as any
+      if (!appointment || appointment.doctor._id.toString() !== user.userId) {
+        throw new BadRequestException('Bạn không phải là bác sĩ được gán cho bệnh án này')
+      }
     }
 
     const offerSummary = (record.offers || []).map(offer => ({
@@ -292,8 +324,18 @@ export class CaseService {
 
   async findAll(user: JwtPayload, page = 1, limit = 10, q?: string, status?: CaseStatus) {
     const filter: any = {
-      patient: user.userId,
       isDeleted: false,
+    }
+
+    // Nếu là bệnh nhân, chỉ xem case của mình
+    if (user.role === 'PATIENT') {
+      filter.patient = user.userId
+    }
+    // Nếu là bác sĩ, xem các case được gán thông qua appointment
+    else if (user.role === 'DOCTOR') {
+      const doctorAppointments = await this.appointmentService.findByDoctor(user.userId)
+      const appointmentIds = doctorAppointments.map(app => app._id)
+      filter.appointmentId = { $in: appointmentIds }
     }
 
     if (q) {
@@ -324,7 +366,7 @@ export class CaseService {
           },
         ],
       })
-      .populate({ path: 'specialty', select: 'name' }) // đúng với schema
+      .populate({ path: 'specialty', select: 'name' })
       .lean()
 
     // Đảm bảo mỗi case chỉ trả về patient là id (string)

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Thông báo hủy lịch hẹn</title>
+</head>
+
+<body style="margin:0;padding:0;background-color:#f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0"
+          style="background-color:#fff;border-radius:8px;padding:0 0 10px 0;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+          <tr>
+            <td style="text-align:center;padding:32px 20px 20px 20px;">
+              <h2 style="margin:0;font-size:24px;color:#e74c3c;">Thông báo hủy lịch hẹn</h2>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 20px 20px 20px;">
+              <p style="font-size:16px;margin:0 0 10px 0;color:#222;">Xin chào <strong>{{name}}</strong>,</p>
+              <p style="font-size:16px;margin:0 0 20px 0;color:#222;">
+                Chúng tôi rất tiếc phải thông báo rằng lịch hẹn của bạn đã bị hủy.
+              </p>
+              <!-- Appointment details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+                <tr>
+                  <td
+                    style="background:#fff;border-left:4px solid #e74c3c;padding:12px 16px 12px 12px;border-radius:4px;">
+                    <h3 style="margin:0 0 8px 0;font-size:17px;color:#e74c3c;">Chi tiết lịch hẹn:</h3>
+                    <p style="margin:0;font-size:15px;"><strong>Bác sĩ:</strong> {{doctor}}</p>
+                    <p style="margin:0;font-size:15px;"><strong>Chuyên khoa:</strong> {{specialty}}</p>
+                    <p style="margin:0;font-size:15px;"><strong>Ngày khám:</strong> {{date}}</p>
+                    <p style="margin:0;font-size:15px;"><strong>Thời gian:</strong> {{slot}}</p>
+                  </td>
+                </tr>
+              </table>
+              <!-- Reason -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+                <tr>
+                  <td
+                    style="background:#fffbe8;border-left:4px solid #f1c40f;padding:12px 16px 12px 12px;border-radius:4px;">
+                    <h3 style="margin:0 0 8px 0;font-size:17px;color:#f1c40f;">Lý do hủy:</h3>
+                    <p style="margin:0;font-size:15px;color:#b07d00;">{{reason}}</p>
+                  </td>
+                </tr>
+              </table>
+              <!-- Refund info -->
+              {{#if payment}}
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+                <tr>
+                  <td
+                    style="background:#eafaf1;border-left:4px solid #2ecc71;padding:12px 16px 12px 12px;border-radius:4px;">
+                    <p style="margin:0;font-size:15px;color:#15996a;">
+                      Số tiền <strong>{{payment.amount}}đ</strong> đã được hoàn trả vào ví của bạn.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              <!-- Reschedule -->
+              <p style="font-size:15px;margin:20px 0 10px 0;color:#222;">
+                Bạn có thể đặt lại lịch hẹn mới bằng cách click vào nút bên dưới:
+              </p>
+              <p style="text-align:center;margin:0 0 10px 0;">
+                <a href="{{link}}"
+                  style="display:inline-block;background-color:#3498db;color:#fff;text-decoration:none;font-size:16px;padding:12px 28px;border-radius:6px;font-weight:bold;">
+                  Đặt lịch hẹn mới
+                </a>
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="text-align:center;padding:22px 20px 12px 20px;">
+              <p style="font-size:13px;color:#999;margin:0;">
+                Email này được gửi tự động từ hệ thống <b>TalkToDoc</b>. Vui lòng không trả lời email này.<br>
+                Nếu bạn cần hỗ trợ, vui lòng liên hệ hotline: <span style="color:#3498db;font-weight:bold;">1900
+                  xxxx</span>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>

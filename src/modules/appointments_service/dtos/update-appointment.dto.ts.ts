@@ -1,9 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsMongoId, IsObject, IsOptional, IsString } from 'class-validator'
+import { IsEnum, IsMongoId, IsObject, IsOptional, IsString } from 'class-validator'
 
 export enum PaymentStatus {
   PAID = 'PAID',
   UNPAID = 'UNPAID',
+}
+
+export enum AppointmentStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  CANCELLED = 'CANCELLED',
+  REJECTED = 'REJECTED',
 }
 
 export class UpdateAppointmentDto {
@@ -41,6 +48,16 @@ export class UpdateAppointmentDto {
     status?: PaymentStatus
     paymentMethod?: string
   }
+
+  @ApiProperty({ required: false, description: 'Lý do hủy lịch hẹn' })
+  @IsOptional()
+  @IsString()
+  reason?: string
+
+  @ApiProperty({ required: false, enum: AppointmentStatus })
+  @IsOptional()
+  @IsEnum(AppointmentStatus)
+  status?: AppointmentStatus
 
   // @ApiProperty({ required: false })
   // @IsOptional()

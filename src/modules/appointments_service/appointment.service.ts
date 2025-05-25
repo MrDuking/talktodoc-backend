@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import mongoose, { Model } from 'mongoose'
+import mongoose, { Model, Types } from 'mongoose'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos/index'
 import { Appointment } from './schemas/appointment.schema'
 
@@ -103,12 +103,6 @@ export class AppointmentService {
     return savedAppointment
   }
 
-  // Lý do doctor và specialty có thể populate data còn patient thì không:
-  // - Trong Mongoose, populate chỉ hoạt động nếu trường đó là một ObjectId tham chiếu (ref) đến một collection khác.
-  // - Thông thường, doctor và specialty được định nghĩa là ref đến collection Doctor và Specialty, nên populate sẽ lấy được dữ liệu chi tiết.
-  // - Nếu patient chỉ lưu dưới dạng string, hoặc không phải là ObjectId ref đến collection Patient, thì populate sẽ không hoạt động.
-  // - Để populate được patient, cần đảm bảo trường patient trong schema Appointment là kiểu ObjectId và có ref: 'Patient'.
-
   async findAppointments(
     user: JwtPayload,
     query?: string,
@@ -181,29 +175,102 @@ export class AppointmentService {
         ...appointment.payment,
         ...updateDto.payment,
       } as typeof appointment.payment
-      // Xóa payment khỏi updateDto để tránh ghi đè toàn bộ
       delete updateDto.payment
     }
 
-    // Cập nhật các field khác
-    const rest = updateDto as Partial<Appointment>
-    Object.keys(rest).forEach(key => {
-      if (key !== 'payment' && rest[key as keyof typeof rest] !== undefined) {
-        // @ts-expect-error: Gán động field cho appointment do DTO có thể chứa các field không khai báo rõ ràng trong type
-        appointment[key] = rest[key as keyof typeof rest]
+    // Xử lý hủy lịch hẹn
+    if (updateDto.status === 'CANCELLED') {
+      appointment.status = 'CANCELLED'
+      appointment.cancelledAt = new Date()
+      appointment.reason = updateDto.reason || 'Không có lý do'
+
+      // Hoàn tiền vào ví của bệnh nhân nếu đã thanh toán
+      if (appointment.payment?.status === 'PAID') {
+        const refundAmount = appointment.payment.total
+        const patientId = appointment.patient.toString()
+
+        try {
+          await this.usersService.updateWalletBalance(
+            patientId,
+            refundAmount,
+            'REFUND',
+            `Hoàn tiền từ lịch hẹn ${appointment.appointmentId} bị hủy: ${appointment.reason}`,
+          )
+          this.logger.log(`Đã hoàn ${refundAmount}đ vào ví của bệnh nhân ${patientId}`)
+        } catch (error) {
+          this.logger.error('Lỗi khi hoàn tiền:', error)
+        }
       }
-    })
 
-    await appointment.save()
-
-    // Nếu appointment được hoàn thành, cập nhật case
-    if (appointment.status === 'COMPLETED') {
+      // Cập nhật trạng thái case
       await this.caseModel.findOneAndUpdate(
         { appointmentId: appointment._id },
-        { $set: { status: 'completed' } }
+        { $set: { status: 'cancelled' } },
       )
+
+      // Gửi email thông báo hủy lịch hẹn
+      try {
+        const populatedAppointment = await this.appointmentModel
+          .findById(id)
+          .populate('patient')
+          .populate('doctor')
+          .populate('specialty')
+
+        // Gửi email cho bệnh nhân
+        if (populatedAppointment?.patient?.email) {
+          await this.mailService.sendTemplateMail({
+            to: populatedAppointment.patient.email,
+            subject: 'TalkToDoc : Lịch hẹn đã bị hủy',
+            template: 'appointment-cancel-patient',
+            variables: {
+              name: populatedAppointment.patient.fullName,
+              doctor: populatedAppointment.doctor?.fullName,
+              date: populatedAppointment.date,
+              slot: populatedAppointment.slot,
+              specialty: populatedAppointment.specialty?.name,
+              reason: appointment.reason,
+              link: 'https://www.talktodoc.online/',
+              payment:
+                appointment.payment?.status === 'PAID'
+                  ? {
+                      amount: appointment.payment.total,
+                    }
+                  : null,
+            },
+          })
+        }
+
+        // Gửi email cho bác sĩ
+        if (populatedAppointment?.doctor?.email) {
+          await this.mailService.sendTemplateMail({
+            to: populatedAppointment.doctor.email,
+            subject: 'TalkToDoc : Có lịch hẹn bị hủy',
+            template: 'appointment-cancel-doctor',
+            variables: {
+              name: populatedAppointment.doctor.fullName,
+              patient: populatedAppointment.patient.fullName,
+              date: populatedAppointment.date,
+              slot: populatedAppointment.slot,
+              reason: appointment.reason,
+              link: 'https://www.talktodoc.online/doctor/schedule',
+            },
+          })
+        }
+      } catch (error) {
+        this.logger.error('Lỗi khi gửi email thông báo hủy:', error)
+      }
+    } else {
+      // Cập nhật các field khác
+      const rest = updateDto as Partial<Appointment>
+      Object.keys(rest).forEach(key => {
+        if (key !== 'payment' && rest[key as keyof typeof rest] !== undefined) {
+          // @ts-expect-error: Gán động field cho appointment do DTO có thể chứa các field không khai báo rõ ràng trong type
+          appointment[key] = rest[key as keyof typeof rest]
+        }
+      })
     }
 
+    await appointment.save()
     return { message: 'Lịch hẹn đã được cập nhật' }
   }
 
@@ -245,7 +312,7 @@ export class AppointmentService {
     // Cập nhật trạng thái case
     await this.caseModel.findOneAndUpdate(
       { appointmentId: appointment._id },
-      { $set: { status: 'assigned' } }
+      { $set: { status: 'assigned' } },
     )
 
     const patient = await this.appointmentModel.findById(id).populate('patient')
@@ -313,15 +380,35 @@ export class AppointmentService {
       throw new BadRequestException('Lịch hẹn không đang ở trạng thái chờ')
     }
 
-    appointment.status = 'REJECTED'
+    appointment.status = 'CANCELLED'
     appointment.cancelledAt = new Date()
     appointment.doctorNote = reason
     await appointment.save()
 
+    if (appointment.payment?.status === 'PAID') {
+      const refundAmount = appointment.payment.total
+      const patientId =
+        appointment.patient instanceof mongoose.Types.ObjectId
+          ? appointment.patient.toString()
+          : appointment.patient._id.toString()
+
+      try {
+        await this.usersService.updateWalletBalance(
+          patientId,
+          refundAmount,
+          'REFUND',
+          `Hoàn tiền từ lịch hẹn ${appointment.appointmentId} bị hủy`,
+        )
+        this.logger.log(`Đã hoàn ${refundAmount}đ vào ví của bệnh nhân ${patientId}`)
+      } catch (error) {
+        this.logger.error('Lỗi khi hoàn tiền:', error)
+      }
+    }
+
     // Cập nhật trạng thái case
     await this.caseModel.findOneAndUpdate(
       { appointmentId: appointment._id },
-      { $set: { status: 'cancelled' } }
+      { $set: { status: 'cancelled' } },
     )
 
     const patient = appointment.patient
@@ -375,5 +462,14 @@ export class AppointmentService {
       }
     }
     return appointmentId
+  }
+
+  async findByDoctor(doctorId: string) {
+    return this.appointmentModel
+      .find({
+        doctor: new Types.ObjectId(doctorId),
+        status: { $in: ['CONFIRMED', 'COMPLETED'] },
+      })
+      .lean()
   }
 }

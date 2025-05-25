@@ -1,0 +1,50 @@
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .header {
+        background-color: #f4f4f4;
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+      }
+      .content {
+        padding: 20px;
+      }
+      .footer {
+        background-color: #f4f4f4;
+        padding: 10px;
+        text-align: center;
+        border-top: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Xác nhận cuộc hẹn</h1>
+      </div>
+      <div class="content">
+        <p>Xin chào {{fullName}},</p>
+        <p>Cuộc hẹn của bạn đã được xác nhận thành công.</p>
+        <p><strong>Ngày:</strong> {{appointmentDate}}</p>
+        <p><strong>Thời gian:</strong> {{appointmentTime}}</p>
+        <p><strong>Bác sĩ:</strong> {{doctorName}}</p>
+        <p>Vui lòng có mặt trước 15 phút để chuẩn bị.</p>
+      </div>
+      <div class="footer">
+        <p>Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.</p>
+      </div>
+    </div>
+  </body>
+</html> 

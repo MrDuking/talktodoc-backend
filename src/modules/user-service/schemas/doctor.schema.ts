@@ -34,6 +34,49 @@ class Availability {
   @Prop({ type: [TimeSlot], default: [] })
   timeSlot!: TimeSlot[]
 }
+@Schema()
+class Wallet {
+  @Prop({ type: Number, required: false, default: 0 })
+  balance?: number
+
+  @Prop({
+    type: [
+      {
+        amount: Number,
+        type: { type: String, enum: ['DEPOSIT', 'WITHDRAW', 'REFUND'] },
+        description: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  transactionHistory?: {
+    amount: number
+    type: 'DEPOSIT' | 'WITHDRAW' | 'REFUND'
+    description: string
+    createdAt: Date
+  }[]
+
+  @Prop({ type: Date, default: Date.now })
+  lastUpdated?: Date
+}
+@Schema()
+class RegistrationForm {
+  @Prop({ required: false, default: '' })
+  practicingCertificate!: string
+
+  @Prop({ required: false, default: '' })
+  degree!: string
+
+  @Prop({ required: false, default: '' })
+  cv!: string
+
+  @Prop({ type: [String], default: [] })
+  otherCertificates?: string[]
+
+  @Prop({ type: Date, default: Date.now })
+  submittedAt!: Date
+}
 
 // ------------------ Doctor Schema ------------------
 @Schema({ timestamps: true })
@@ -44,10 +87,10 @@ export class Doctor extends BaseUser {
   @Prop({ default: UserRole.DOCTOR })
   role!: UserRole
 
-  @Prop({ type: [Types.ObjectId], required: true, ref: 'Specialty' })
+  @Prop({ type: [Types.ObjectId], required: false, ref: 'Specialty' })
   specialty!: Types.ObjectId[]
 
-  @Prop({ type: Types.ObjectId, required: true, ref: 'Hospital' })
+  @Prop({ type: Types.ObjectId, required: false, ref: 'Hospital' })
   hospital!: Types.ObjectId
 
   @Prop({ default: 0 })
@@ -59,7 +102,7 @@ export class Doctor extends BaseUser {
   @Prop({ type: [Availability], default: [] })
   availability!: Availability[]
 
-  @Prop({ type: Types.ObjectId, required: true, ref: 'DoctorLevel' })
+  @Prop({ type: Types.ObjectId, required: false, ref: 'DoctorLevel' })
   rank!: Types.ObjectId
 
   @Prop({ type: String, required: false })
@@ -94,6 +137,19 @@ export class Doctor extends BaseUser {
 
   @Prop({ type: Date, required: false, default: new Date() })
   lastLoggedIn?: Date
+
+  @Prop({ type: RegistrationForm })
+  registrationForm?: RegistrationForm
+
+  @Prop({
+    type: Wallet,
+    default: {
+      balance: 0,
+      transactionHistory: [],
+      lastUpdated: new Date(),
+    },
+  })
+  wallet?: Wallet
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)

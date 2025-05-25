@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
@@ -26,6 +27,29 @@ class AvailabilityDto {
   @IsString({ each: true })
   @IsNotEmpty()
   timeSlots!: string[]
+}
+
+class RegistrationFormDto {
+  @ApiProperty({ description: 'Chứng chỉ hành nghề', required: true })
+  @IsString()
+  @IsNotEmpty()
+  practicingCertificate!: string
+
+  @ApiProperty({ description: 'Bằng cấp', required: true })
+  @IsString()
+  @IsNotEmpty()
+  degree!: string
+
+  @ApiProperty({ description: 'CV của bác sĩ', required: true })
+  @IsString()
+  @IsNotEmpty()
+  cv!: string
+
+  @ApiProperty({ description: 'Các chứng chỉ khác', required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  otherCertificates?: string[]
 }
 
 export class CreateDoctorDto {
@@ -136,15 +160,21 @@ export class CreateDoctorDto {
   @IsOptional()
   @IsEnum(DoctorRegistrationStatus)
   registrationStatus?: DoctorRegistrationStatus
+
+  @ApiProperty({ type: RegistrationFormDto, description: 'Thông tin đăng ký bác sĩ' })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RegistrationFormDto)
+  registrationForm?: RegistrationFormDto
 }
 
 export class UpdateDoctorDto extends PartialType(CreateDoctorDto) {
-    @ApiProperty({
-        example: true,
-        description: 'Cờ để admin duyệt hồ sơ bác sĩ',
-        required: false,
-      })
-      @IsOptional()
-      @IsBoolean()
-      approve_request?: boolean
+  @ApiProperty({
+    example: true,
+    description: 'Cờ để admin duyệt hồ sơ bác sĩ',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  approve_request?: boolean
 }

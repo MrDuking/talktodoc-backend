@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Thông báo lịch hẹn bị hủy</title>
+</head>
+
+<body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0"
+          style="background-color: #ffffff; padding: 20px; border-radius: 8px;">
+          <tr>
+            <td align="center" style="padding-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 24px; color: #333;">Thông báo lịch hẹn bị hủy</h2>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="color: #333; font-size: 16px; line-height: 1.6;">
+              <p>Xin chào Bác sĩ <strong>{{name}}</strong>,</p>
+              <p>Một lịch hẹn trong lịch làm việc của bạn đã bị hủy.</p>
+
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="margin: 20px 0; background-color: #f9f9f9; border-left: 4px solid #3498db; padding: 15px; border-radius: 4px;">
+                <tr>
+                  <td style="font-weight: bold;">Chi tiết lịch hẹn:</td>
+                </tr>
+                <tr>
+                  <td><strong>Bệnh nhân:</strong> {{patient}}</td>
+                </tr>
+                <tr>
+                  <td><strong>Ngày khám:</strong> {{date}}</td>
+                </tr>
+                <tr>
+                  <td><strong>Thời gian:</strong> {{slot}}</td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="margin: 20px 0; background-color: #fefbe5; border-left: 4px solid #f1c40f; padding: 15px; border-radius: 4px;">
+                <tr>
+                  <td style="font-weight: bold;">Lý do hủy:</td>
+                </tr>
+                <tr>
+                  <td>{{reason}}</td>
+                </tr>
+              </table>
+
+              <p>Khung giờ này đã được giải phóng trong lịch làm việc của bạn.</p>
+
+              <p style="text-align: center; margin-top: 30px;">
+                <a href="{{link}}"
+                  style="background-color: #3498db; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; display: inline-block;">Xem
+                  lịch làm việc</a>
+              </p>
+
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+
+              <p style="font-size: 12px; color: #999; text-align: center;">
+                Email này được gửi tự động từ hệ thống <strong>TalkToDoc</strong>. Vui lòng không trả lời email này.<br>
+                Cần hỗ trợ? Liên hệ: <a href="mailto:admin@talktodoc.online"
+                  style="color: #999;">admin@talktodoc.online</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>

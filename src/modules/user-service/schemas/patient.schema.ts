@@ -64,6 +64,27 @@ export class Patient extends BaseUser {
     required: false,
   })
   emergencyContact!: { name: string; relationship: string; phoneNumber: string }
+
+  @Prop({ type: Number, default: 0 })
+  walletBalance!: number
+
+  @Prop({
+    type: [
+      {
+        amount: Number,
+        type: { type: String, enum: ['DEPOSIT', 'WITHDRAW', 'REFUND'] },
+        description: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  walletHistory!: {
+    amount: number
+    type: 'DEPOSIT' | 'WITHDRAW' | 'REFUND'
+    description: string
+    createdAt: Date
+  }[]
 }
 
 export const PatientSchema = SchemaFactory.createForClass(Patient)
@@ -83,5 +104,10 @@ PatientSchema.pre<PatientDocument>('save', async function (next) {
 
     this.id = uniqueId
   }
+
+  if (this.isNew && this.walletBalance === undefined) {
+    this.walletBalance = 0
+  }
+
   next()
 })

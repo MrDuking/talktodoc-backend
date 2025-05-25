@@ -1,0 +1,136 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      background: #f5f7fb;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(34, 53, 90, 0.12), 0 1.5px 4px rgba(34, 53, 90, 0.05);
+      overflow: hidden;
+      border: none;
+    }
+
+    .header {
+      background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+      color: #fff;
+      padding: 24px 20px 14px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+
+    .content {
+      padding: 26px 22px 22px 22px;
+      color: #2d3748;
+      font-size: 1.02rem;
+    }
+
+    .content p {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .content strong {
+      color: #2563eb;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 12px;
+      background: #f1f5fb;
+      color: #2563eb;
+      font-weight: 600;
+      margin-left: 5px;
+      font-size: 0.98rem;
+    }
+
+    .btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+      color: #fff !important;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 2px 8px rgba(34, 53, 90, 0.07);
+      transition: filter .15s;
+    }
+
+    .btn:hover {
+      filter: brightness(0.95);
+    }
+
+    .secondary-btn {
+      background: #f3f4f6;
+      color: #2563eb !important;
+      margin-left: 8px;
+    }
+
+    .footer {
+      background: #f8fafc;
+      padding: 16px 10px;
+      text-align: center;
+      color: #8c98a4;
+      font-size: 0.97rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 540px) {
+      .container {
+        max-width: 97vw;
+        margin: 10px;
+      }
+
+      .header,
+      .content,
+      .footer {
+        padding-left: 5vw;
+        padding-right: 5vw;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Kết quả phê duyệt bác sĩ</h1>
+    </div>
+    <div class="content">
+      <p>Xin chào <strong>{{fullName}}</strong>,</p>
+      <p>
+        Hồ sơ bác sĩ của bạn đã được
+        <span class="status">{{status}}</span>
+      </p>
+      <!-- <p>
+        <strong>Lý do:</strong> {{reason}}
+      </p> -->
+      <p>Bạn có thể đăng nhập vào hệ thống để xem chi tiết và cập nhật hồ sơ nếu cần.</p>
+      <a href="{{loginUrl}}" class="btn">Đăng nhập</a>
+      <a href="{{updateProfileUrl}}" class="btn secondary-btn">Cập nhật hồ sơ</a>
+    </div>
+    <div class="footer">
+      Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.
+    </div>
+  </div>
+</body>
+
+</html>

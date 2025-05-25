@@ -94,51 +94,61 @@ export class UsersService {
     return doctor
   }
 
-  //   async createDoctor(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
-  //     const doctor = new this.doctorModel({
-  //         ...createDoctorDto,
-  //         registrationStatus: createDoctorDto.registrationStatus ?? DoctorRegistrationStatus.PENDING,
-  //       })
-  //           return doctor.save()
-  //   }
   async createDoctor(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
     const doctor = new this.doctorModel({
       ...createDoctorDto,
       registrationStatus: createDoctorDto.registrationStatus ?? DoctorRegistrationStatus.PENDING,
+      registrationForm: {
+        ...createDoctorDto.registrationForm,
+        submittedAt: new Date(),
+      },
     })
 
     const savedDoctor = await doctor.save()
 
-    if (savedDoctor.registrationStatus === DoctorRegistrationStatus.PENDING) {
-      await this.mailService.sendTemplateMail({
-        to: savedDoctor.email,
-        subject: 'Yêu cầu đăng ký bác sĩ của bạn đã được ghi nhận',
-        template: 'doctor-request',
-        variables: {
-          fullName: savedDoctor.fullName,
-          phoneNumber: savedDoctor.phoneNumber,
-          email: savedDoctor.email,
+    // Gửi email cho bác sĩ
+    await this.mailService.sendTemplateMail({
+      to: savedDoctor.email,
+      subject: 'Yêu cầu đăng ký bác sĩ của bạn đã được ghi nhận',
+      template: 'doctor-request',
+      variables: {
+        fullName: savedDoctor.fullName,
+        phoneNumber: savedDoctor.phoneNumber,
+        email: savedDoctor.email,
+        registrationForm: {
+          practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
+          degree: savedDoctor.registrationForm?.degree,
+          cv: savedDoctor.registrationForm?.cv,
+          otherCertificates: savedDoctor.registrationForm?.otherCertificates,
+          submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
         },
-      })
+      },
+    })
 
-      const employees = await this.employeeModel.find({ isActive: true }).exec()
+    // Gửi email cho tất cả nhân viên admin
+    const employees = await this.employeeModel.find({ isActive: true }).exec()
 
-      await Promise.all(
-        employees.map(emp =>
-          this.mailService.sendTemplateMail({
-            to: emp.email,
-            subject: 'Thông báo: Bác sĩ mới đăng ký',
-            template: 'new-doctor-request',
-            variables: {
-              fullName: savedDoctor.fullName,
-              phoneNumber: savedDoctor.phoneNumber,
-              email: savedDoctor.email,
-              submittedAt: new Date().toLocaleString(),
+    await Promise.all(
+      employees.map(emp =>
+        this.mailService.sendTemplateMail({
+          to: emp.email,
+          subject: 'Thông báo: Bác sĩ mới đăng ký',
+          template: 'new-doctor-request',
+          variables: {
+            fullName: savedDoctor.fullName,
+            phoneNumber: savedDoctor.phoneNumber,
+            email: savedDoctor.email,
+            registrationForm: {
+              practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
+              degree: savedDoctor.registrationForm?.degree,
+              cv: savedDoctor.registrationForm?.cv,
+              otherCertificates: savedDoctor.registrationForm?.otherCertificates,
+              submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
             },
-          }),
-        ),
-      )
-    }
+          },
+        }),
+      ),
+    )
 
     return savedDoctor
   }
@@ -151,9 +161,21 @@ export class UsersService {
     // Tách approve_request khỏi DTO
     const { approve_request, ...rest } = updateDoctorDto as any
 
+    const currentDoctor = await this.doctorModel.findById(id)
+    if (!currentDoctor) {
+      throw new NotFoundException('Không tìm thấy bác sĩ')
+    }
+
+    const oldStatus = currentDoctor.registrationStatus
+    let newStatus = rest.registrationStatus
+
     // Nếu có yêu cầu duyệt thì set registrationStatus
     if (approve_request === true) {
-      rest.registrationStatus = DoctorRegistrationStatus.APPROVED
+      newStatus = DoctorRegistrationStatus.APPROVED
+      rest.registrationStatus = newStatus
+    } else if (approve_request === false) {
+      newStatus = DoctorRegistrationStatus.REJECTED
+      rest.registrationStatus = newStatus
     }
 
     const updated = await this.doctorModel
@@ -162,17 +184,45 @@ export class UsersService {
 
     if (!updated) throw new NotFoundException('Không tìm thấy bác sĩ')
 
-    // Nếu vừa duyệt thì gửi email
-    if (approve_request === true) {
-      await this.mailService.sendTemplateMail({
-        to: updated.email,
-        subject: 'Hồ sơ bác sĩ của bạn đã được phê duyệt',
-        template: 'doctor-approval-result',
-        variables: {
-          fullName: updated.fullName,
-          status: 'Đã được PHÊ DUYỆT',
-        },
-      })
+    // Gửi email thông báo khi trạng thái thay đổi
+    if (newStatus && oldStatus !== newStatus) {
+      let emailSubject = ''
+      let emailTemplate = ''
+      let statusText = ''
+
+      switch (newStatus) {
+        case DoctorRegistrationStatus.APPROVED:
+          emailSubject = 'TalkToDoc - Hồ sơ bác sĩ của bạn đã được phê duyệt'
+          emailTemplate = 'doctor-approval-result'
+          statusText = 'ĐÃ ĐƯỢC PHÊ DUYỆT'
+          break
+        case DoctorRegistrationStatus.REJECTED:
+          emailSubject = 'TalkToDoc - Hồ sơ bác sĩ của bạn chưa được phê duyệt'
+          emailTemplate = 'doctor-approval-result'
+          statusText = 'CHƯA ĐƯỢC PHÊ DUYỆT'
+          break
+        case DoctorRegistrationStatus.UPDATING:
+          emailSubject = 'TalkToDoc - Yêu cầu cập nhật hồ sơ bác sĩ'
+          emailTemplate = 'doctor-update-request'
+          statusText = 'YÊU CẦU CẬP NHẬT'
+          break
+      }
+
+      if (emailSubject && emailTemplate) {
+        await this.mailService.sendTemplateMail({
+          to: updated.email,
+          subject: emailSubject,
+          template: emailTemplate,
+          variables: {
+            fullName: updated.fullName,
+            status: statusText,
+            registrationForm: updated.registrationForm,
+            reason: rest.rejectReason || rest.updateReason || '',
+            loginUrl: 'https://www.talktodoc.online/auth/login',
+            updateProfileUrl: 'https://www.talktodoc.online/doctor/profile',
+          },
+        })
+      }
     }
 
     // Populate lại để trả về đầy đủ
@@ -437,5 +487,76 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<Doctor | Patient | Employee | null> {
     return this.patientModel.findOne({ email }).exec()
+  }
+
+  async updateWalletBalance(
+    userId: string,
+    amount: number,
+    type: 'DEPOSIT' | 'WITHDRAW' | 'REFUND',
+    description: string,
+  ): Promise<Doctor | Patient> {
+    // Kiểm tra xem là bác sĩ hay bệnh nhân
+    const doctor = await this.doctorModel.findById(userId)
+    const patient = await this.patientModel.findById(userId)
+
+    if (!doctor && !patient) {
+      throw new Error('User not found')
+    }
+
+    if (doctor) {
+      // Cập nhật ví bác sĩ
+      if (!doctor.wallet) {
+        doctor.wallet = {
+          balance: 0,
+          transactionHistory: [],
+          lastUpdated: new Date(),
+        }
+      }
+
+      if (type === 'DEPOSIT' || type === 'REFUND') {
+        doctor.wallet.balance = (doctor.wallet.balance || 0) + amount
+      } else if (type === 'WITHDRAW') {
+        if ((doctor.wallet.balance || 0) < amount) {
+          throw new Error('Số dư không đủ')
+        }
+        doctor.wallet.balance = (doctor.wallet.balance || 0) - amount
+      }
+
+      // Thêm vào lịch sử giao dịch
+      doctor.wallet.transactionHistory = doctor.wallet.transactionHistory || []
+      doctor.wallet.transactionHistory.push({
+        amount,
+        type,
+        description,
+        createdAt: new Date(),
+      })
+
+      doctor.wallet.lastUpdated = new Date()
+      await doctor.save()
+      return doctor
+    }
+
+    if (patient) {
+      // Cập nhật ví bệnh nhân
+      if (type === 'DEPOSIT' || type === 'REFUND') {
+        patient.walletBalance += amount
+      } else if (type === 'WITHDRAW') {
+        if (patient.walletBalance < amount) {
+          throw new Error('Số dư không đủ')
+        }
+        patient.walletBalance -= amount
+      }
+
+      // Thêm vào lịch sử
+      patient.walletHistory.push({
+        amount,
+        type,
+        description,
+        createdAt: new Date(),
+      })
+
+      await patient.save()
+      return patient
+    }
   }
 }

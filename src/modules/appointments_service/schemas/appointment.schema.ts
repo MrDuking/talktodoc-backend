@@ -43,6 +43,9 @@ export class Appointment extends Document {
   @Prop()
   doctorNote?: string
 
+  @Prop()
+  reason?: string
+
   @Prop({
     type: Object,
     default: {
