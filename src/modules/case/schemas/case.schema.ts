@@ -1,10 +1,18 @@
+import { BadRequestException } from '@nestjs/common'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
-import { BadRequestException } from '@nestjs/common'
 
 export type CaseStatus = 'draft' | 'pending' | 'assigned' | 'completed' | 'cancelled'
 
-export type CaseDocument = Case & Document
+export interface OfferSummary {
+  date: string
+  doctor: string
+  summary: string
+}
+
+export interface CaseDocument extends Case, Document {
+  offerSummary?: OfferSummary[]
+}
 
 @Schema({ timestamps: true })
 export class Case {
@@ -18,7 +26,7 @@ export class Case {
   medicalForm?: Record<string, any>
 
   @Prop({ type: Types.ObjectId, ref: 'Appointment' })
-  appointmentId?: Types.ObjectId
+  appointmentId?: Types.ObjectId | any
 
   @Prop({
     type: String,
@@ -33,7 +41,7 @@ export class Case {
   @Prop()
   deletedAt?: Date
 
-  // 🆕 Danh sách đơn thuốc (offers)
+  // Danh sách đơn thuốc (offers)
   @Prop({
     type: [
       {
@@ -43,10 +51,12 @@ export class Case {
         medications: [
           {
             medicationId: { type: Types.ObjectId, ref: 'Medicine' },
-            name: String, // tên thuốc snapshot
-            dosage: String, // liều dùng
-            usage: String, // cách dùng
-            duration: String, // thời gian
+            name: String,
+            dosage: String,
+            usage: String,
+            duration: String,
+            price: Number,
+            quantity: Number,
           },
         ],
       },
@@ -63,6 +73,8 @@ export class Case {
       dosage?: string
       usage?: string
       duration?: string
+      price?: number
+      quantity?: number
     }[]
   }[]
 }

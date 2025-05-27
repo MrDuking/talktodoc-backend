@@ -3,9 +3,15 @@ import { IsEnum, IsMongoId, IsObject, IsOptional } from 'class-validator'
 import { CaseAction } from '../enum/case-action.enum'
 
 export class SubmitCaseDto {
-  @ApiProperty({ description: 'ID của case (bệnh án)' })
+  @ApiProperty({ description: 'ID của case (bệnh án)', required: false })
+  @IsOptional()
   @IsMongoId({ message: 'case_id không hợp lệ' })
-  case_id!: string
+  case_id?: string
+
+  @ApiProperty({ description: 'ID chuyên khoa', required: false })
+  @IsOptional()
+  @IsMongoId({ message: 'specialty không hợp lệ' })
+  specialty?: string
 
   @ApiProperty({
     required: false,
@@ -35,6 +41,6 @@ export class SubmitCaseDto {
     description: 'Hành động xử lý case',
     enum: CaseAction,
   })
-  @IsEnum(CaseAction, { message: 'action phải là một trong: save, submit, sendback' })
+  @IsEnum(CaseAction, { message: 'action phải là một trong: create, save, submit, sendback' })
   action!: CaseAction
 }

@@ -56,7 +56,7 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
 - **Yêu cầu xác thực:** Bearer Token
 - **Query Params:**
   - `q`: Từ khoá tìm kiếm (triệu chứng, ghi chú)
-  - `status`: Trạng thái (`draft`, `pending`, `assigned`, `completed`)
+  - `status`: Trạng thái (`draft`, `pending`, `assigned`, `completed`, `cancelled`)
   - `page`: Trang (mặc định 1)
   - `limit`: Số lượng/trang (mặc định 10)
 - **Response:**
@@ -68,16 +68,52 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
   "limit": 10,
   "data": [
     {
-      "_id": "string",
-      "patient": "string",
-      "specialty": "string",
-      "medicalForm": { ... },
-      "appointmentId": "string",
-      "status": "draft | pending | assigned | completed",
-      "offers": [ ... ],
+      "_id": "664b1e2f2f8b2c001e7e7e7e",
+      "patient": "664b1e2f2f8b2c001e7e7e7d",
+      "specialty": {
+        "_id": "664b1e2f2f8b2c001e7e7e7f",
+        "name": "Nội tổng quát"
+      },
+      "medicalForm": {
+        "symptoms": "Đau đầu 3 ngày",
+        "questions": [{ "question": "Có tiền sử cao huyết áp?", "answer": "Không" }],
+        "note": "Bệnh nhân có biểu hiện nhẹ"
+      },
+      "appointmentId": {
+        "_id": "664b1e2f2f8b2c001e7e7e80",
+        "appointmentId": "AP123456",
+        "date": "2024-05-20T10:00:00.000Z",
+        "slot": "08:00-09:00",
+        "status": "CONFIRMED",
+        "doctor": {
+          "_id": "664b1e2f2f8b2c001e7e7e81",
+          "fullName": "BS. Nguyễn Văn A"
+        },
+        "patient": {
+          "_id": "664b1e2f2f8b2c001e7e7e7d",
+          "fullName": "Nguyễn Văn B"
+        }
+      },
+      "status": "assigned",
+      "offers": [
+        {
+          "createdAt": "2024-05-20T12:00:00.000Z",
+          "createdBy": "664b1e2f2f8b2c001e7e7e81",
+          "note": "Uống thuốc sau ăn",
+          "medications": [
+            {
+              "medicationId": "664b1e2f2f8b2c001e7e7e90",
+              "name": "Paracetamol",
+              "dosage": "500mg",
+              "usage": "1 viên mỗi 8 tiếng",
+              "duration": "3 ngày"
+            }
+          ]
+        }
+      ],
       "isDeleted": false,
-      "createdAt": "ISODate",
-      "updatedAt": "ISODate"
+      "createdAt": "2024-05-20T09:00:00.000Z",
+      "updatedAt": "2024-05-20T12:00:00.000Z"
     }
   ]
 }
@@ -154,11 +190,24 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
 }
 ```
 
+- **Lưu ý:**
+
+  - Không cần kiểm tra medicationId có tồn tại trong bảng medicine hay không.
+  - Các field của thuốc (medicationId, dosage, usage, duration, name) sẽ được lưu đúng như FE gửi lên. Nếu không có name sẽ mặc định là 'Không tên thuốc'.
+
 - **Response:**
 
 ```json
-{ "message": "Đã thêm đơn thuốc thành công" }
+{
+  "message": "Đã thêm đơn thuốc thành công",
+  "data": "<caseId>"
+}
 ```
+
+- **Giải thích:**
+
+  - `message`: Thông báo kết quả.
+  - `data`: ID của case vừa được cập nhật đơn thuốc.
 
 - **Lỗi thường gặp:**
   - 400: Thiếu trường, thuốc không hợp lệ, quyền truy cập.
@@ -187,12 +236,4 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
 - Tất cả endpoint đều yêu cầu xác thực JWT.
 - Chỉ bệnh nhân sở hữu case mới được cập nhật/xoá case của mình.
 - Bác sĩ chỉ được phép kê đơn khi case ở trạng thái phù hợp.
-- Trường `status` hợp lệ: `draft`, `pending`, `assigned`, `completed`.
-- Trường `action` hợp lệ: `save`, `submit`, `sendback`.
-
----
-
-## 7. Liên hệ
-
-- Backend: [Tên, email]
-- Frontend: [Tên, email]
+- Trường `status` hợp lệ: `draft`, `pending`, `

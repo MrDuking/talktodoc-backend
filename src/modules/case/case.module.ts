@@ -1,3 +1,4 @@
+import { AppointmentModule } from '@/modules/appointments_service/appointment.module'
 import { AuthModule } from '@/modules/auth/auth.module'
 import { MedicineModule } from '@/modules/medicines_service/medicines.module'
 import { Medicine, MedicineSchema } from '@/modules/medicines_service/schemas/medicines.schema'
@@ -6,7 +7,6 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { CaseController } from './case.controller'
 import { CaseService } from './case.service'
 import { Case, CaseSchema } from './schemas/case.schema'
-import { AppointmentModule } from '@/modules/appointments_service/appointment.module'
 
 @Module({
   imports: [

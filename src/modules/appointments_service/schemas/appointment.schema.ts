@@ -1,31 +1,33 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 
+export type AppointmentDocument = Appointment & Document
+
 @Schema({ timestamps: true })
-export class Appointment extends Document {
+export class Appointment {
   @Prop({ required: true, unique: true })
   appointmentId!: string
 
-  @Prop({ type: Types.ObjectId, ref: 'Patient' })
-  patient!: Types.ObjectId | any
+  @Prop({ type: Types.ObjectId, ref: 'Patient', required: true })
+  patient!: Types.ObjectId
 
-  @Prop({ type: Types.ObjectId, ref: 'Doctor' })
-  doctor!: Types.ObjectId | any
+  @Prop({ type: Types.ObjectId, ref: 'Doctor', required: true })
+  doctor!: Types.ObjectId
 
-  @Prop({ type: Types.ObjectId, ref: 'Specialty' })
-  specialty!: Types.ObjectId | any
+  @Prop({ type: Types.ObjectId, ref: 'Specialty', required: true })
+  specialty!: Types.ObjectId
 
-  @Prop({})
+  @Prop({ required: true })
   date!: string
 
-  @Prop({})
+  @Prop({ required: true })
   slot!: string
 
   @Prop({ default: 'Asia/Ho_Chi_Minh' })
   timezone!: string
 
   @Prop({ type: Object })
-  medicalForm?: Record<string, any>
+  medicalForm?: Record<string, unknown>
 
   @Prop({
     type: String,
@@ -34,10 +36,10 @@ export class Appointment extends Document {
   })
   status!: string
 
-  @Prop()
+  @Prop({ type: Date })
   confirmedAt?: Date
 
-  @Prop()
+  @Prop({ type: Date })
   cancelledAt?: Date
 
   @Prop()
@@ -47,14 +49,13 @@ export class Appointment extends Document {
   reason?: string
 
   @Prop({
-    type: Object,
-    default: {
-      platformFee: 0,
-      doctorFee: 0,
-      discount: 0,
-      total: 0,
-      status: 'UNPAID',
-      paymentMethod: '',
+    type: {
+      platformFee: { type: Number, default: 0 },
+      doctorFee: { type: Number, default: 0 },
+      discount: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+      status: { type: String, default: 'UNPAID' },
+      paymentMethod: { type: String, default: '' },
     },
   })
   payment?: {

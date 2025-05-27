@@ -14,6 +14,7 @@ import mongoose, { Model, Types } from 'mongoose'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos/index'
 import { Appointment } from './schemas/appointment.schema'
 
+// Định nghĩa các interface cho dữ liệu đã populate
 interface Patient {
   _id: string
   fullName: string
@@ -32,6 +33,33 @@ interface Specialty {
   name: string
 }
 
+// Interface cho appointment đã được populate
+interface PopulatedAppointment {
+  _id: Types.ObjectId
+  appointmentId: string
+  patient: Patient
+  doctor: Doctor
+  specialty: Specialty
+  status: string
+  date: string
+  slot: string
+  timezone: string
+  payment?: {
+    platformFee: number
+    doctorFee: number
+    discount: number
+    total: number
+    status: string
+    paymentMethod?: string
+  }
+  reason?: string
+  doctorNote?: string
+  confirmedAt?: Date
+  cancelledAt?: Date
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 interface AppointmentResponse {
   _id: string
   appointmentId: string
@@ -47,6 +75,17 @@ interface AppointmentResponse {
     slot: string
     timezone: string
   }
+}
+
+// Interface cho appointment khi trả về từ findByDoctor
+interface DoctorAppointment {
+  _id: string
+  appointmentId: string
+  patient: Patient
+  specialty: Specialty
+  date: string
+  slot: string
+  status: string
 }
 
 @Injectable()
@@ -97,7 +136,7 @@ export class AppointmentService {
 
     const savedAppointment = await appointment.save()
 
-    caseRecord.appointmentId = new mongoose.Types.ObjectId(savedAppointment._id as string)
+    caseRecord.appointmentId = new mongoose.Types.ObjectId(savedAppointment._id)
     await caseRecord.save()
 
     return savedAppointment
@@ -135,32 +174,35 @@ export class AppointmentService {
   async findOne(id: string): Promise<AppointmentResponse> {
     const appointment = await this.appointmentModel
       .findById(id)
-
       .populate({
         path: 'doctor',
         populate: ['specialty', 'rank'],
       })
       .populate('specialty')
+      .populate('patient')
       .lean()
 
     if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
 
     const formattedDate = new Date(appointment.date).toISOString()
 
+    // Sử dụng type assertion để TypeScript hiểu đúng kiểu dữ liệu
+    const populatedAppointment = appointment as unknown as PopulatedAppointment
+
     return {
-      _id: appointment._id.toString(),
-      appointmentId: appointment.appointmentId,
-      patient: appointment.patient as Patient,
-      doctor: appointment.doctor as Doctor,
-      specialty: appointment.specialty as Specialty,
-      status: appointment.status,
+      _id: populatedAppointment._id.toString(),
+      appointmentId: populatedAppointment.appointmentId,
+      patient: populatedAppointment.patient,
+      doctor: populatedAppointment.doctor,
+      specialty: populatedAppointment.specialty,
+      status: populatedAppointment.status,
       date: formattedDate,
-      slot: appointment.slot,
-      timezone: appointment.timezone,
+      slot: populatedAppointment.slot,
+      timezone: populatedAppointment.timezone,
       booking: {
         date: formattedDate,
-        slot: appointment.slot,
-        timezone: appointment.timezone,
+        slot: populatedAppointment.slot,
+        timezone: populatedAppointment.timezone,
       },
     }
   }
@@ -210,11 +252,12 @@ export class AppointmentService {
 
       // Gửi email thông báo hủy lịch hẹn
       try {
-        const populatedAppointment = await this.appointmentModel
+        const populatedAppointment = (await this.appointmentModel
           .findById(id)
           .populate('patient')
           .populate('doctor')
           .populate('specialty')
+          .lean()) as unknown as PopulatedAppointment
 
         // Gửi email cho bệnh nhân
         if (populatedAppointment?.patient?.email) {
@@ -285,7 +328,7 @@ export class AppointmentService {
     doctorId: string,
     note?: string,
   ): Promise<{ message: string }> {
-    const appointment = await this.appointmentModel
+    const appointment = (await this.appointmentModel
       .findById(id)
       .populate('patient')
       .populate({
@@ -293,6 +336,7 @@ export class AppointmentService {
         populate: { path: 'specialty' },
       })
       .populate('specialty')
+      .lean()) as unknown as PopulatedAppointment
 
     if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
 
@@ -304,18 +348,23 @@ export class AppointmentService {
       throw new BadRequestException('Lịch hẹn không đang ở trạng thái chờ')
     }
 
-    appointment.status = 'CONFIRMED'
-    appointment.confirmedAt = new Date()
-    if (note) appointment.doctorNote = note
-    await appointment.save()
+    await this.appointmentModel.findByIdAndUpdate(id, {
+      status: 'CONFIRMED',
+      confirmedAt: new Date(),
+      doctorNote: note,
+    })
 
     // Cập nhật trạng thái case
     await this.caseModel.findOneAndUpdate(
-      { appointmentId: appointment._id },
+      { appointmentId: new Types.ObjectId(id) },
       { $set: { status: 'assigned' } },
     )
 
-    const patient = await this.appointmentModel.findById(id).populate('patient')
+    const patient = (await this.appointmentModel
+      .findById(id)
+      .populate('patient')
+      .lean()) as unknown as PopulatedAppointment
+
     if (patient?.patient?.email) {
       await this.mailService.sendTemplateMail({
         to: patient.patient.email,
@@ -356,7 +405,7 @@ export class AppointmentService {
     doctorId: string,
     reason: string,
   ): Promise<{ message: string }> {
-    const appointment = await this.appointmentModel
+    const appointment = (await this.appointmentModel
       .findById(id)
       .populate('patient')
       .populate({
@@ -364,13 +413,11 @@ export class AppointmentService {
         populate: { path: 'specialty' },
       })
       .populate('specialty')
+      .lean()) as unknown as PopulatedAppointment
 
     if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
 
-    const appointmentDoctorId =
-      appointment.doctor instanceof mongoose.Types.ObjectId
-        ? appointment.doctor.toString()
-        : appointment.doctor._id.toString()
+    const appointmentDoctorId = appointment.doctor._id.toString()
 
     if (appointmentDoctorId !== doctorId) {
       throw new ForbiddenException('Bạn không phải là bác sĩ được giao')
@@ -380,17 +427,15 @@ export class AppointmentService {
       throw new BadRequestException('Lịch hẹn không đang ở trạng thái chờ')
     }
 
-    appointment.status = 'CANCELLED'
-    appointment.cancelledAt = new Date()
-    appointment.doctorNote = reason
-    await appointment.save()
+    await this.appointmentModel.findByIdAndUpdate(id, {
+      status: 'CANCELLED',
+      cancelledAt: new Date(),
+      doctorNote: reason,
+    })
 
     if (appointment.payment?.status === 'PAID') {
       const refundAmount = appointment.payment.total
-      const patientId =
-        appointment.patient instanceof mongoose.Types.ObjectId
-          ? appointment.patient.toString()
-          : appointment.patient._id.toString()
+      const patientId = appointment.patient._id.toString()
 
       try {
         await this.usersService.updateWalletBalance(
@@ -407,7 +452,7 @@ export class AppointmentService {
 
     // Cập nhật trạng thái case
     await this.caseModel.findOneAndUpdate(
-      { appointmentId: appointment._id },
+      { appointmentId: new Types.ObjectId(id) },
       { $set: { status: 'cancelled' } },
     )
 
@@ -464,12 +509,31 @@ export class AppointmentService {
     return appointmentId
   }
 
-  async findByDoctor(doctorId: string) {
-    return this.appointmentModel
-      .find({
-        doctor: new Types.ObjectId(doctorId),
-        status: { $in: ['CONFIRMED', 'COMPLETED'] },
-      })
-      .lean()
+  async findByDoctor(doctorId: string): Promise<DoctorAppointment[]> {
+    this.logger.log(`Tìm lịch hẹn cho bác sĩ: ${doctorId}`)
+
+    if (!Types.ObjectId.isValid(doctorId)) {
+      this.logger.error('ID bác sĩ không hợp lệ')
+      return []
+    }
+
+    try {
+      const appointments = await this.appointmentModel
+        .find({
+          doctor: new Types.ObjectId(doctorId),
+          status: { $in: ['CONFIRMED', 'COMPLETED'] },
+        })
+        .select('_id appointmentId patient specialty date slot status')
+        .populate('patient', 'fullName email')
+        .populate('specialty', 'name')
+        .sort({ createdAt: -1 })
+        .lean()
+
+      this.logger.log(`Tìm thấy ${appointments.length} lịch hẹn`)
+      return appointments as unknown as DoctorAppointment[]
+    } catch (error) {
+      this.logger.error('Lỗi khi tìm lịch hẹn:', error)
+      return []
+    }
   }
 }

@@ -8,6 +8,7 @@ import { Request } from 'express'
 import { CaseService } from './case.service'
 import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
+import { CaseDocument, CaseStatus } from './schemas/case.schema'
 
 @ApiTags('Cases')
 @ApiBearerAuth()
@@ -18,8 +19,14 @@ export class CaseController {
 
   @Post('data')
   @ApiOperation({ summary: 'Tạo hoặc cập nhật bệnh án (case)' })
-  async submitCase(@Req() req: Request & { user?: JwtPayload }, @Body() dto: SubmitCaseDto) {
-    return this.caseService.submitData(dto, req.user!)
+  async submitCase(
+    @Req() req: Request & { user?: JwtPayload },
+    @Body() dto: SubmitCaseDto,
+  ): Promise<{
+    message: string
+    data: any
+  }> {
+    return await this.caseService.submitData(dto, req.user!)
   }
 
   @Get()
@@ -34,14 +41,23 @@ export class CaseController {
     @Query('limit') limit = 10,
     @Query('q') q?: string,
     @Query('status') status?: string,
-  ) {
-    return this.caseService.findAll(req.user!, +page, +limit, q, status as any)
+  ): Promise<{
+    total: number
+    page: number
+    limit: number
+    data: any[]
+  }> {
+    // Không ép kiểu status sang any, truyền string để service tự xử lý
+    return await this.caseService.findAll(req.user!, +page, +limit, q, status as CaseStatus)
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Lấy chi tiết bệnh án' })
-  async findOne(@Req() req: Request & { user?: JwtPayload }, @Param('id') id: string) {
-    return this.caseService.findOne(id, req.user!)
+  async findOne(
+    @Req() req: Request & { user?: JwtPayload },
+    @Param('id') id: string,
+  ): Promise<any> {
+    return await this.caseService.findOne(id, req.user!)
   }
 
   @Patch(':id/offer')
@@ -52,13 +68,30 @@ export class CaseController {
     @Req() req: Request & { user?: JwtPayload },
     @Param('id') id: string,
     @Body() dto: AddOfferDto,
-  ) {
-    return this.caseService.addOffer(id, req.user!.userId, dto)
+  ): Promise<{
+    message: string
+    data: CaseDocument | Record<string, unknown> | string
+  }> {
+    const medications = (dto.medications || []).map(med => ({
+      medicationId: med.medicationId,
+      name: 'Không tên thuốc',
+      dosage: med.dosage,
+      usage: med.usage,
+      duration: med.duration,
+    }))
+    console.log('medications', medications)
+    return await this.caseService.addOffer(id, req.user!.userId, dto)
   }
 
   @Patch(':id/delete')
   @ApiOperation({ summary: 'Xoá mềm bệnh án' })
-  async softDelete(@Req() req: Request & { user?: JwtPayload }, @Param('id') id: string) {
-    return this.caseService.deleteCase(id, req.user!)
+  async softDelete(
+    @Req() req: Request & { user?: JwtPayload },
+    @Param('id') id: string,
+  ): Promise<{
+    message: string
+    data: string | CaseDocument | Record<string, unknown>
+  }> {
+    return await this.caseService.deleteCase(id, req.user!)
   }
 }

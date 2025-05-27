@@ -43,7 +43,6 @@ export class UsersService {
     if (!mongoose.Types.ObjectId.isValid(id))
       throw new BadRequestException('Invalid employee ID format')
     const employee = await this.employeeModel.findById(id).populate('specialty').exec()
-    console.log('employee', employee)
     if (!employee) throw new NotFoundException('Employee not found')
     return employee
   }
@@ -320,11 +319,9 @@ export class UsersService {
   }
 
   async getPatientById(_id: string): Promise<Patient> {
-    console.log('id', _id)
     if (!mongoose.Types.ObjectId.isValid(_id))
       throw new BadRequestException('Invalid patient ID format')
     const patient = await this.patientModel.findById(_id).exec()
-    console.log('patient', patient)
     if (!patient) throw new NotFoundException('Patient not found')
     return patient
   }
@@ -494,7 +491,7 @@ export class UsersService {
     amount: number,
     type: 'DEPOSIT' | 'WITHDRAW' | 'REFUND',
     description: string,
-  ): Promise<Doctor | Patient> {
+  ): Promise<Doctor | Patient | null | undefined> {
     // Kiểm tra xem là bác sĩ hay bệnh nhân
     const doctor = await this.doctorModel.findById(userId)
     const patient = await this.patientModel.findById(userId)

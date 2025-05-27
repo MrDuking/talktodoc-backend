@@ -5,21 +5,30 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectModel } from '@nestjs/mongoose'
 import moment from 'moment'
 import { Model, Types } from 'mongoose'
+import { Appointment } from '../appointments_service/schemas/appointment.schema'
 import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
 import { CaseAction } from './enum/case-action.enum'
 import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
 
 interface PopulatedUser {
+  _id: Types.ObjectId
   fullName: string
 }
 
-interface CreateCaseDto {
-  specialtyId: string
-  patient: string
+interface CaseResponse {
+  message: string
+  data: CaseDocument | Record<string, unknown> | string
 }
 
-function validateObjectIdOrThrow(id: string, label = 'ID') {
+interface CaseListResponse {
+  total: number
+  page: number
+  limit: number
+  data: Record<string, unknown>[]
+}
+
+function validateObjectIdOrThrow(id: string, label = 'ID'): void {
   if (!Types.ObjectId.isValid(id)) {
     throw new BadRequestException(`${label} không hợp lệ`)
   }
@@ -35,16 +44,14 @@ export class CaseService {
     private readonly appointmentService: AppointmentService,
   ) {}
 
-  async submitData(dto: SubmitCaseDto, user: JwtPayload) {
-    console.log('dto', dto)
-    const { case_id, appointment_id, medical_form, action, specialty } = dto as any
+  async submitData(dto: SubmitCaseDto, user: JwtPayload): Promise<CaseResponse> {
+    const { case_id, appointment_id, medical_form, action, specialty } = dto
     this.logger.log(`Xử lý case với action ${action}`)
 
     // CREATE: Tạo mới case
     if ((!case_id || case_id === '') && action === CaseAction.CREATE) {
       if (!specialty) throw new BadRequestException('Chuyên khoa là bắt buộc')
       validateObjectIdOrThrow(specialty, 'Chuyên khoa')
-      console.log('specialty', specialty)
       const newCase = new this.caseModel({
         patient: user.userId,
         specialty,
@@ -64,9 +71,9 @@ export class CaseService {
         },
       }
     }
-    console.log('case_id', case_id)
+
     // Validate case_id và lấy thông tin case
-    validateObjectIdOrThrow(case_id, 'Bệnh án')
+    validateObjectIdOrThrow(case_id || '', 'Bệnh án')
     const caseRecord = await this.caseModel.findById(case_id)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
     if (caseRecord.patient.toString() !== user.userId) {
@@ -79,7 +86,6 @@ export class CaseService {
         return await this.handleSaveAction(caseRecord, medical_form)
 
       case CaseAction.SUBMIT:
-        console.log('appointment_id', appointment_id)
         return await this.handleSubmitAction(caseRecord, appointment_id, medical_form)
 
       case CaseAction.SENDBACK:
@@ -90,7 +96,10 @@ export class CaseService {
     }
   }
 
-  private async handleSaveAction(caseRecord: CaseDocument, medical_form?: any) {
+  private async handleSaveAction(
+    caseRecord: CaseDocument,
+    medical_form?: Record<string, any>,
+  ): Promise<CaseResponse> {
     if (caseRecord.status !== 'draft') {
       throw new BadRequestException('Chỉ có thể lưu tạm khi ở trạng thái nháp')
     }
@@ -103,6 +112,7 @@ export class CaseService {
       message: 'Đã lưu bệnh án tạm thời',
       data: {
         case_id: caseRecord._id,
+        medicalForm: medical_form,
         ...caseRecord.toObject(),
       },
     }
@@ -111,15 +121,13 @@ export class CaseService {
   private async handleSubmitAction(
     caseRecord: CaseDocument,
     appointment_id?: string,
-    medical_form?: any,
-  ) {
-    console.log('caseRecord.status', caseRecord.status)
+    medical_form?: Record<string, any>,
+  ): Promise<CaseResponse> {
     switch (caseRecord.status) {
       case 'draft':
         if (!appointment_id) {
           throw new BadRequestException('Vui lòng chọn lịch hẹn trước')
         }
-        console.log('appointment_id', appointment_id)
         validateObjectIdOrThrow(appointment_id, 'Lịch hẹn')
 
         // Kiểm tra và liên kết với appointment
@@ -185,7 +193,7 @@ export class CaseService {
     }
   }
 
-  private async handleSendbackAction(caseRecord: CaseDocument) {
+  private async handleSendbackAction(caseRecord: CaseDocument): Promise<CaseResponse> {
     if (caseRecord.status !== 'assigned') {
       throw new BadRequestException('Chỉ trả lại case khi đang ở trạng thái assigned')
     }
@@ -203,8 +211,10 @@ export class CaseService {
     }
   }
 
-  // Phương thức để cập nhật case khi appointment thay đổi
-  async updateCaseStatusByAppointment(appointmentId: string, appointmentStatus: string) {
+  async updateCaseStatusByAppointment(
+    appointmentId: string,
+    appointmentStatus: string,
+  ): Promise<void> {
     const caseRecord = await this.caseModel.findOne({
       appointmentId: new Types.ObjectId(appointmentId),
     })
@@ -235,31 +245,21 @@ export class CaseService {
     await caseRecord.save()
   }
 
-  async addOffer(caseId: string, doctorId: string, dto: AddOfferDto) {
+  async addOffer(caseId: string, doctorId: string, dto: AddOfferDto): Promise<CaseResponse> {
     validateObjectIdOrThrow(caseId, 'Bệnh án')
-
-    dto.medications.forEach(med => {
-      validateObjectIdOrThrow(med.medicationId, 'ID thuốc')
-    })
+    // Map lại medications: chỉ lấy các field FE gửi lên, không cần kiểm tra tồn tại trong bảng medicine
+    const medications = (dto.medications || []).map(med => ({
+      medicationId: med.medicationId,
+      name: med.name || 'Không tên thuốc',
+      dosage: med.dosage,
+      usage: med.usage,
+      duration: med.duration,
+      price: med.price,
+      quantity: med.quantity,
+    }))
 
     const caseRecord = await this.caseModel.findById(caseId)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
-
-    const medicines = await this.medicineModel.find({
-      _id: { $in: dto.medications.map(m => m.medicationId) },
-    })
-
-    const mapped = dto.medications.map(m => {
-      const found = medicines.find(med => (med._id as any).toString() === m.medicationId)
-      if (!found) throw new BadRequestException(`Không tìm thấy thuốc với ID: ${m.medicationId}`)
-      return {
-        medicationId: found._id,
-        name: found.name,
-        dosage: m.dosage,
-        usage: m.usage,
-        duration: m.duration,
-      }
-    })
 
     await this.caseModel.findByIdAndUpdate(caseId, {
       $push: {
@@ -267,16 +267,15 @@ export class CaseService {
           createdAt: new Date(),
           createdBy: doctorId,
           note: dto.note || '',
-          medications: mapped,
+          medications,
         },
       },
     })
 
-    return { message: 'Đã thêm đơn thuốc thành công' }
+    return { message: 'Đã thêm đơn thuốc thành công', data: caseId }
   }
 
-  async findOne(id: string, user: JwtPayload) {
-    console.log('id', id)
+  async findOne(id: string, user: JwtPayload): Promise<CaseResponse> {
     validateObjectIdOrThrow(id, 'Bệnh án')
 
     const record = await this.caseModel
@@ -302,7 +301,7 @@ export class CaseService {
         throw new BadRequestException('Bạn không có quyền truy cập bệnh án này')
       }
     } else if (user.role === 'DOCTOR') {
-      const appointment = record.appointmentId as any
+      const appointment = record.appointmentId as unknown as Appointment
       if (!appointment || appointment.doctor._id.toString() !== user.userId) {
         throw new BadRequestException('Bạn không phải là bác sĩ được gán cho bệnh án này')
       }
@@ -319,23 +318,21 @@ export class CaseService {
         .join(', '),
     }))
 
-    return { ...record, offerSummary }
+    return {
+      data: { ...record, offerSummary },
+      message: 'Lấy thông tin bệnh án thành công',
+    }
   }
 
-  async findAll(user: JwtPayload, page = 1, limit = 10, q?: string, status?: CaseStatus) {
-    const filter: any = {
+  async findAll(
+    user: JwtPayload,
+    page = 1,
+    limit = 10,
+    q?: string,
+    status?: CaseStatus,
+  ): Promise<CaseListResponse> {
+    const filter: Record<string, unknown> = {
       isDeleted: false,
-    }
-
-    // Nếu là bệnh nhân, chỉ xem case của mình
-    if (user.role === 'PATIENT') {
-      filter.patient = user.userId
-    }
-    // Nếu là bác sĩ, xem các case được gán thông qua appointment
-    else if (user.role === 'DOCTOR') {
-      const doctorAppointments = await this.appointmentService.findByDoctor(user.userId)
-      const appointmentIds = doctorAppointments.map(app => app._id)
-      filter.appointmentId = { $in: appointmentIds }
     }
 
     if (q) {
@@ -369,6 +366,7 @@ export class CaseService {
       .populate({ path: 'specialty', select: 'name' })
       .lean()
 
+    this.logger.log(`Tìm thấy ${data.length} case`)
     // Đảm bảo mỗi case chỉ trả về patient là id (string)
     const mappedData = (data || []).map(item => ({
       ...item,
@@ -377,12 +375,16 @@ export class CaseService {
           ? item.patient._id.toString()
           : item.patient?.toString?.() || item.patient,
     }))
-
     return { total, page, limit, data: mappedData }
   }
 
-  async getAllCase(page = 1, limit = 10, q?: string, status?: CaseStatus) {
-    const filter: any = {
+  async getAllCase(
+    page = 1,
+    limit = 10,
+    q?: string,
+    status?: CaseStatus,
+  ): Promise<CaseListResponse> {
+    const filter: Record<string, any> = {
       isDeleted: false,
     }
 
@@ -403,25 +405,22 @@ export class CaseService {
       .sort({ updatedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate({ path: 'specialty', select: 'name' }) // đúng với schema
+      .populate({ path: 'specialty', select: 'name' })
       .lean()
 
     return { total, page, limit, data }
   }
 
-  async deleteCase(id: string, user: JwtPayload) {
+  async deleteCase(id: string, user: JwtPayload): Promise<CaseResponse> {
     validateObjectIdOrThrow(id, 'Bệnh án')
 
     const caseRecord = await this.caseModel.findById(id)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
-    if (caseRecord.patient.toString() !== user.userId) {
-      throw new BadRequestException('Bạn không có quyền xoá case này')
-    }
 
     caseRecord.isDeleted = true
     caseRecord.deletedAt = new Date()
     await caseRecord.save()
 
-    return { message: 'Đã xoá bệnh án (ẩn khỏi danh sách)' }
+    return { data: id, message: 'Đã xoá bệnh án (ẩn khỏi danh sách)' }
   }
 }
