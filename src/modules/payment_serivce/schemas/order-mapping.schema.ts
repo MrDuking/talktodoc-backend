@@ -9,6 +9,12 @@ export class OrderMapping extends Document {
   @Prop({ required: true })
   patient!: string
 
+  @Prop()
+  doctorId?: string
+
+  @Prop()
+  appointmentId?: string
+
   @Prop({ required: true })
   amount!: number
 

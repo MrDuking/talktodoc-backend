@@ -470,7 +470,7 @@ export class UsersService {
     return null
   }
 
-  async findManyPatientsByIds(ids: string[]): Promise<Patient[]> {
+  async findManyPatientsByIds(ids: string[]): Promise<any[]> {
     if (!Array.isArray(ids) || ids.length === 0) return []
     const objectIds = ids
       .filter(id => mongoose.Types.ObjectId.isValid(id))

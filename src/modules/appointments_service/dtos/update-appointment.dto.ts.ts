@@ -59,15 +59,11 @@ export class UpdateAppointmentDto {
   @IsEnum(AppointmentStatus)
   status?: AppointmentStatus
 
-  // @ApiProperty({ required: false })
-  // @IsOptional()
-  // @IsString()
-  // status?: "PENDING" | "CONFIRMED" | "CANCELLED"
-
-  // @ApiProperty({ required: false })
-  // @IsOptional()
-  // @IsMongoId()
-  // specialty?: string
+  @IsOptional()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  duration_call?: string
 
   @IsOptional()
   @ApiProperty({ required: false })

@@ -207,10 +207,13 @@ export class AppointmentService {
     }
   }
 
-  async update(id: string, updateDto: UpdateAppointmentDto): Promise<{ message: string }> {
+  async update(
+    id: string,
+    updateDto: UpdateAppointmentDto,
+  ): Promise<{ message: string; data: Appointment }> {
     const appointment = await this.appointmentModel.findById(id)
     if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
-
+    console.log(updateDto)
     // Nếu có payment, merge từng field vào payment cũ
     if (updateDto.payment) {
       appointment.payment = {
@@ -219,7 +222,10 @@ export class AppointmentService {
       } as typeof appointment.payment
       delete updateDto.payment
     }
-
+    if (updateDto.duration_call) {
+      appointment.duration_call = updateDto.duration_call
+      delete updateDto.duration_call
+    }
     // Xử lý hủy lịch hẹn
     if (updateDto.status === 'CANCELLED') {
       appointment.status = 'CANCELLED'
@@ -314,7 +320,7 @@ export class AppointmentService {
     }
 
     await appointment.save()
-    return { message: 'Lịch hẹn đã được cập nhật' }
+    return { message: 'Lịch hẹn đã được cập nhật', data: appointment }
   }
 
   async remove(id: string): Promise<{ message: string }> {
@@ -535,5 +541,17 @@ export class AppointmentService {
       this.logger.error('Lỗi khi tìm lịch hẹn:', error)
       return []
     }
+  }
+
+  async findManyAppointmentsByIds(ids: string[], populateDoctor = false): Promise<any[]> {
+    if (populateDoctor) {
+      return this.appointmentModel
+        .find({ _id: { $in: ids } })
+        .populate('doctor')
+        .populate('patient')
+        .populate('specialty')
+        .lean() as unknown as Appointment[]
+    }
+    return this.appointmentModel.find({ _id: { $in: ids } }).lean() as unknown as Appointment[]
   }
 }

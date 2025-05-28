@@ -69,6 +69,9 @@ export class Appointment {
 
   @Prop()
   notes?: string
+
+  @Prop()
+  duration_call?: string
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment)

@@ -19,7 +19,7 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('create-payment-url')
-  async createPaymentUrl(@Body() request: PaymentRequestDto) {
+  async createPaymentUrl(@Body() request: PaymentRequestDto): Promise<any> {
     try {
       this.logger.log(
         `Creating payment URL for user: ${request.patient} with amount: ${request.amount}`,
@@ -32,7 +32,7 @@ export class PaymentController {
   }
 
   @Post('vnpay-callback')
-  async vnpayCallback(@Body() callbackData: PaymentCallbackDto) {
+  async vnpayCallback(@Body() callbackData: PaymentCallbackDto): Promise<any> {
     try {
       this.logger.log(`Received payment callback for order: ${callbackData.vnp_TxnRef}`)
 
@@ -48,7 +48,7 @@ export class PaymentController {
   }
 
   @Get('history/:patient')
-  async getPaymentHistory(@Param('patient') patient: string) {
+  async getPaymentHistory(@Param('patient') patient: string): Promise<any> {
     try {
       // Return simplified payment history
       return await this.paymentService.getSimplifiedPaymentHistory(patient)

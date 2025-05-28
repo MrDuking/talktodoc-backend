@@ -104,16 +104,25 @@ export class CaseService {
       throw new BadRequestException('Chỉ có thể lưu tạm khi ở trạng thái nháp')
     }
 
-    if (medical_form) caseRecord.medicalForm = medical_form
-    await caseRecord.save()
+    this.logger.log(`[DEBUG] Case status before save: ${caseRecord.status}`)
+    this.logger.log(`[DEBUG] Current medicalForm: ${JSON.stringify(caseRecord.medicalForm)}`)
+    this.logger.log(`[DEBUG] New medicalForm: ${JSON.stringify(medical_form)}`)
+
+    if (medical_form) {
+      caseRecord.medicalForm = medical_form
+      this.logger.log(`[DEBUG] Updated medicalForm: ${JSON.stringify(caseRecord.medicalForm)}`)
+    }
+
+    const savedCase = await caseRecord.save()
+    this.logger.log(`[DEBUG] Saved case medicalForm: ${JSON.stringify(savedCase.medicalForm)}`)
 
     this.logger.log(`Đã lưu tạm case ${caseRecord._id}`)
     return {
       message: 'Đã lưu bệnh án tạm thời',
       data: {
         case_id: caseRecord._id,
-        medicalForm: medical_form,
-        ...caseRecord.toObject(),
+        medicalForm: savedCase.medicalForm,
+        ...savedCase.toObject(),
       },
     }
   }

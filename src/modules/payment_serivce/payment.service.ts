@@ -5,6 +5,7 @@ import * as crypto from 'crypto'
 import moment from 'moment'
 import { Model } from 'mongoose'
 import * as querystring from 'qs'
+import { AppointmentService } from '../appointments_service/appointment.service'
 import { UsersService } from '../user-service/user.service'
 import { PaymentCallbackDto } from './dto/payment-callback.dto'
 import { PaymentRequestDto } from './dto/payment-request.dto'
@@ -14,7 +15,6 @@ import {
   VnpayParams,
 } from './interfaces/payment.interface'
 import { OrderMapping } from './schemas/order-mapping.schema'
-
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name)
@@ -29,6 +29,7 @@ export class PaymentService {
     private orderMappingModel: Model<OrderMapping>,
     private configService: ConfigService,
     private usersService: UsersService,
+    private appointmentService: AppointmentService,
   ) {
     this.vnp_TmnCode = this.configService.get<string>('VNP_TMN_CODE') || 'BAXGHO1O'
     this.vnp_HashSecret =
@@ -54,7 +55,12 @@ export class PaymentService {
     this.logger.log(`Generated orderId: ${orderId}`)
 
     try {
-      await this.storeOrderUserMapping(orderId, request.patient, request.amount)
+      await this.storeOrderUserMapping(
+        orderId,
+        request.patient,
+        request.amount,
+        request.appointmentId,
+      )
 
       let vnp_Params: VnpayParams = {
         vnp_Version: '2.1.0',
@@ -136,11 +142,13 @@ export class PaymentService {
     orderId: string,
     patient: string,
     amount: number,
+    appointmentId?: string,
   ): Promise<OrderMapping> {
     try {
       return this.orderMappingModel.create({
         orderId,
         patient,
+        appointmentId,
         amount,
         status: 'pending',
         createdAt: new Date(),
@@ -188,7 +196,16 @@ export class PaymentService {
     return sorted
   }
 
-  async getSimplifiedPaymentHistory(patient: string) {
+  async getSimplifiedPaymentHistory(patient: string): Promise<
+    {
+      orderId: string
+      amount: number
+      status: string
+      createdAt: Date
+      completedAt?: Date
+      user: { name: string; email: string }
+    }[]
+  > {
     const payments = await this.orderMappingModel
       .find({ patient })
       .sort({ createdAt: 1 })
@@ -248,19 +265,61 @@ export class PaymentService {
     }
   }
 
-  async getAllOrders() {
+  async getAllOrders(): Promise<
+    {
+      orderId: string
+      patient: string
+      amount: number
+      status: string
+      createdAt: Date
+      completedAt?: Date
+      userInfo?: {
+        _id: string
+        fullName: string
+        email: string
+      }
+      appointmentInfo?: {
+        _id: string
+        appointmentId: string
+        date: string
+        slot: string
+        status: string
+      }
+      doctorInfo?: {
+        _id: string
+        fullName: string
+        email: string
+        specialty?: {
+          _id: string
+          name: string
+        }
+      }
+    }[]
+  > {
     try {
       const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).lean().exec()
       const patientIds = orders.map(order => order.patient).filter(Boolean)
       const patients = await this.usersService.findManyPatientsByIds(patientIds)
 
+      // Lấy appointments với populate doctor
+      const appointmentIds = orders.map(order => order.appointmentId).filter(Boolean) as string[]
+      const appointments = await this.appointmentService.findManyAppointmentsByIds(
+        appointmentIds,
+        true,
+      )
+
       return orders.map(order => {
-        const userInfo = patients.find(p => p.id === order.patient)
-        const name = userInfo?.fullName || 'Unknown'
-        const email = userInfo?.email || 'Unknown'
+        const userInfo = patients.find(p => p._id.toString() === order.patient)
+        const appointmentInfo = appointments.find(a => a._id.toString() === order.appointmentId)
+
+        // Lấy thông tin bác sĩ từ appointment nếu có
+        const doctorInfo = appointmentInfo?.doctor || null
+
         return {
           ...order,
-          userInfo: { name, email },
+          userInfo: userInfo,
+          appointmentInfo: appointmentInfo,
+          doctorInfo: doctorInfo,
         }
       })
     } catch (error) {
