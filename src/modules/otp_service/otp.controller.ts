@@ -16,6 +16,13 @@ export class OtpController {
     return this.otpService.sendOtp(dto.email)
   }
 
+  @Post('send-password-reset')
+  @ApiOperation({ summary: 'Send OTP for password reset' })
+  @HttpCode(HttpStatus.OK)
+  async sendPasswordResetOtp(@Body() dto: SendOtpDto) {
+    return this.otpService.sendPasswordResetOtp(dto.email)
+  }
+
   @Post('verify')
   @ApiOperation({ summary: 'Verify OTP code' })
   @HttpCode(HttpStatus.OK)

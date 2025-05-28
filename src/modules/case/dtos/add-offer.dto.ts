@@ -46,4 +46,9 @@ export class AddOfferDto {
   @ValidateNested({ each: true })
   @Type(() => MedicationItemDto)
   medications!: MedicationItemDto[]
+
+  @ApiProperty({ description: 'ID của nhà thuốc (nếu có)' })
+  @IsOptional()
+  @IsString()
+  pharmacyId?: string
 }

@@ -31,7 +31,7 @@ export class Appointment {
 
   @Prop({
     type: String,
-    enum: ['PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED'],
+    enum: ['PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'COMPLETED'],
     default: 'PENDING',
   })
   status!: string

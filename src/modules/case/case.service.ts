@@ -76,10 +76,12 @@ export class CaseService {
     validateObjectIdOrThrow(case_id || '', 'Bệnh án')
     const caseRecord = await this.caseModel.findById(case_id)
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
-    if (caseRecord.patient.toString() !== user.userId) {
-      throw new BadRequestException('Bạn không có quyền cập nhật case này')
-    }
-
+    // if (caseRecord.patient.toString() !== user.userId) {
+    //   throw new BadRequestException('Bạn không có quyền cập nhật case này')
+    // }
+    // if (caseRecord.doctor.toString() !== user.userId) {
+    //   throw new BadRequestException('Bạn không có quyền cập nhật case này')
+    // }
     // Xử lý các action
     switch (action) {
       case CaseAction.SAVE:
@@ -174,14 +176,14 @@ export class CaseService {
 
       case 'assigned':
         // Kiểm tra trạng thái appointment
-        if (caseRecord?.appointmentId) {
-          const appointment = await this.appointmentService.findOne(
-            caseRecord.appointmentId.toString(),
-          )
-          if (appointment.status !== 'COMPLETED') {
-            throw new BadRequestException('Lịch hẹn chưa được hoàn tất')
-          }
-        }
+        // if (caseRecord?.appointmentId) {
+        //   const appointment = await this.appointmentService.findOne(
+        //     caseRecord.appointmentId.toString(),
+        //   )
+        //   if (appointment.status !== 'COMPLETED') {
+        //     throw new BadRequestException('Lịch hẹn chưa được hoàn tất')
+        //   }
+        // }
 
         if (medical_form) caseRecord.medicalForm = medical_form
         caseRecord.status = 'completed'
@@ -300,6 +302,7 @@ export class CaseService {
           },
         ],
       })
+      .populate({ path: 'specialty' })
       .lean()
 
     if (!record) throw new NotFoundException('Không tìm thấy bệnh án')
@@ -372,7 +375,7 @@ export class CaseService {
           },
         ],
       })
-      .populate({ path: 'specialty', select: 'name' })
+      .populate({ path: 'specialty' })
       .lean()
 
     this.logger.log(`Tìm thấy ${data.length} case`)
