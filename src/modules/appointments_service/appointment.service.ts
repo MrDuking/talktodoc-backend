@@ -108,6 +108,34 @@ export class AppointmentService {
     )
   }
 
+  private async checkDoctorAvailability(
+    doctorId: string,
+    date: string,
+    slot: string,
+  ): Promise<{ isAvailable: boolean; existingAppointment: Appointment | null }> {
+    try {
+      const query = {
+        doctor: doctorId,
+        date: date,
+        slot: slot,
+        status: { $nin: ['CANCELLED', 'REJECTED'] },
+      }
+
+      this.logger.log('Kiểm tra lịch trống của bác sĩ với query:', JSON.stringify(query))
+
+      const existingAppointment = await this.appointmentModel.findOne(query)
+      this.logger.log('Kết quả kiểm tra:', existingAppointment)
+
+      return {
+        isAvailable: !existingAppointment,
+        existingAppointment: existingAppointment as Appointment | null,
+      }
+    } catch (error) {
+      this.logger.error('Lỗi khi kiểm tra lịch trống:', error)
+      throw new BadRequestException('Có lỗi xảy ra khi kiểm tra lịch trống của bác sĩ')
+    }
+  }
+
   async create(createDto: CreateAppointmentDto & { patient: string }): Promise<Appointment> {
     const { case_id, specialty, doctor, date, slot, timezone, patient } = createDto
 
@@ -119,6 +147,19 @@ export class AppointmentService {
     if (!caseRecord) throw new NotFoundException('Không tìm thấy bệnh án')
     if (caseRecord.patient.toString() !== patient) {
       throw new ForbiddenException('Bạn không có quyền tạo lịch hẹn cho case này')
+    }
+
+    // Kiểm tra trùng lịch
+    const { isAvailable, existingAppointment } = await this.checkDoctorAvailability(
+      doctor,
+      date,
+      slot,
+    )
+    console.log('existingAppointment', existingAppointment)
+    if (!isAvailable) {
+      throw new BadRequestException(
+        `Bác sĩ đã có lịch hẹn vào ${date} ${slot}. Vui lòng chọn thời gian khác.`,
+      )
     }
 
     const appointmentId = await this.generateUniqueAppointmentId()
@@ -553,5 +594,85 @@ export class AppointmentService {
         .lean() as unknown as Appointment[]
     }
     return this.appointmentModel.find({ _id: { $in: ids } }).lean() as unknown as Appointment[]
+  }
+
+  /**
+   * Tìm kiếm danh sách lịch hẹn của bác sĩ theo id với các bộ lọc
+   * @param doctorId - ID của bác sĩ
+   * @param filter - Các tham số lọc (status, date, từ ngày, đến ngày)
+   * @param page - Trang hiện tại
+   * @param limit - Số lượng kết quả trên mỗi trang
+   * @returns Danh sách lịch hẹn và thông tin phân trang
+   */
+  async findAppointmentsByDoctorId(
+    doctorId: string,
+    filter: {
+      status?: string | string[]
+      date?: string
+      from_date?: string
+      to_date?: string
+    } = {},
+    page = 1,
+    limit = 10,
+  ): Promise<{ total: number; page: number; limit: number; items: Appointment[] }> {
+    this.logger.log(`Tìm lịch hẹn của bác sĩ: ${doctorId} với bộ lọc:`, filter)
+
+    if (!Types.ObjectId.isValid(doctorId)) {
+      throw new BadRequestException('ID bác sĩ không hợp lệ')
+    }
+
+    const query: Record<string, unknown> = {
+      doctor: new Types.ObjectId(doctorId),
+    }
+
+    // Lọc theo trạng thái
+    if (filter.status) {
+      if (Array.isArray(filter.status)) {
+        query.status = { $in: filter.status }
+      } else {
+        query.status = filter.status
+      }
+    }
+
+    // Lọc theo ngày cụ thể
+    if (filter.date) {
+      query.date = filter.date
+    }
+
+    // Lọc theo khoảng thời gian
+    if (filter.from_date || filter.to_date) {
+      const dateFilter: Record<string, string> = {}
+      if (filter.from_date) {
+        dateFilter.$gte = filter.from_date
+      }
+      if (filter.to_date) {
+        dateFilter.$lte = filter.to_date
+      }
+      query.date = dateFilter
+    }
+
+    try {
+      const total = await this.appointmentModel.countDocuments(query)
+      const items = await this.appointmentModel
+        .find(query)
+        .populate('patient', 'fullName email phone')
+        .populate('specialty', 'name')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ date: -1, slot: 1 })
+        .lean()
+
+      this.logger.log(`Tìm thấy ${items.length} lịch hẹn cho bác sĩ ${doctorId}`)
+
+      return {
+        total,
+        page,
+        limit,
+        items: items as unknown as Appointment[],
+      }
+    } catch (error) {
+      this.logger.error(`Lỗi khi tìm lịch hẹn cho bác sĩ ${doctorId}:`, error)
+      throw new BadRequestException('Có lỗi xảy ra khi tìm kiếm lịch hẹn')
+    }
   }
 }

@@ -113,4 +113,34 @@ export class AppointmentController {
   migrateSpecialty(): Promise<void> {
     return this.appointmentService.migrateDefaultStatus()
   }
+
+  @Get('doctor/:doctorId')
+  @ApiOperation({ summary: 'Lấy danh sách lịch hẹn của bác sĩ' })
+  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo trạng thái' })
+  @ApiQuery({ name: 'date', required: false, description: 'Lọc theo ngày (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'from_date', required: false, description: 'Lọc từ ngày (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'to_date', required: false, description: 'Lọc đến ngày (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'page', required: false, description: 'Trang hiện tại' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Số lượng mỗi trang' })
+  async findByDoctor(
+    @Param('doctorId') doctorId: string,
+    @Query('status') status?: string | string[],
+    @Query('date') date?: string,
+    @Query('from_date') fromDate?: string,
+    @Query('to_date') toDate?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<{ total: number; page: number; limit: number; items: Appointment[] }> {
+    return this.appointmentService.findAppointmentsByDoctorId(
+      doctorId,
+      {
+        status,
+        date,
+        from_date: fromDate,
+        to_date: toDate,
+      },
+      +page,
+      +limit,
+    )
+  }
 }

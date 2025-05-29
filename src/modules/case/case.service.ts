@@ -278,6 +278,7 @@ export class CaseService {
           createdAt: new Date(),
           createdBy: doctorId,
           note: dto.note || '',
+          pharmacyId: dto.pharmacyId || '',
           medications,
         },
       },
@@ -303,6 +304,7 @@ export class CaseService {
         ],
       })
       .populate({ path: 'specialty' })
+      .populate({ path: 'offers.pharmacyId' })
       .lean()
 
     if (!record) throw new NotFoundException('Không tìm thấy bệnh án')

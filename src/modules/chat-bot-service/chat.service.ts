@@ -83,7 +83,7 @@ export class ChatService {
             },
           ],
           temperature: 0.7,
-          max_tokens: 200,
+          max_tokens: 600,
         })
         reply =
           visionResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể phân tích ảnh này.'
@@ -142,7 +142,7 @@ export class ChatService {
         { role: 'user', content: dto.message },
       ],
       temperature: 0.7,
-      max_tokens: 150,
+      max_tokens: 600,
     })
 
     reply = chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'

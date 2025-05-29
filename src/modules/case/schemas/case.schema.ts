@@ -48,6 +48,7 @@ export class Case {
         createdAt: { type: Date, default: Date.now },
         createdBy: { type: Types.ObjectId, ref: 'Doctor', required: true },
         note: { type: String },
+        pharmacyId: { type: Types.ObjectId, ref: 'Pharmacy' },
         medications: [
           {
             medicationId: { type: Types.ObjectId, ref: 'Medicine' },
