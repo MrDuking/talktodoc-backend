@@ -92,6 +92,6 @@ export class CaseController {
     message: string
     data: string | CaseDocument | Record<string, unknown>
   }> {
-    return await this.caseService.deleteCase(id, req.user!)
+    return await this.caseService.deleteCase(id)
   }
 }

@@ -9,7 +9,14 @@ import { Appointment } from '../appointments_service/schemas/appointment.schema'
 import { AddOfferDto } from './dtos/add-offer.dto'
 import { SubmitCaseDto } from './dtos/submit-case.dto'
 import { CaseAction } from './enum/case-action.enum'
-import { Case, CaseDocument, CaseStatus } from './schemas/case.schema'
+import {
+  Case,
+  CaseDocument,
+  CaseStatus,
+  generateCaseId,
+  MedicalFormType,
+  validateObjectIdOrThrow,
+} from './schemas/case.schema'
 
 interface PopulatedUser {
   _id: Types.ObjectId
@@ -28,12 +35,6 @@ interface CaseListResponse {
   data: Record<string, unknown>[]
 }
 
-function validateObjectIdOrThrow(id: string, label = 'ID'): void {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new BadRequestException(`${label} không hợp lệ`)
-  }
-}
-
 @Injectable()
 export class CaseService {
   private readonly logger = new Logger(CaseService.name)
@@ -44,6 +45,27 @@ export class CaseService {
     private readonly appointmentService: AppointmentService,
   ) {}
 
+  // Function để tạo caseId unique với retry logic
+  private async generateUniqueCaseId(): Promise<string> {
+    let attempts = 0
+    const maxAttempts = 10
+
+    while (attempts < maxAttempts) {
+      const newCaseId = generateCaseId()
+
+      // Kiểm tra xem caseId đã tồn tại chưa
+      const existingCase = await this.caseModel.findOne({ caseId: newCaseId }).lean()
+      if (!existingCase) {
+        return newCaseId
+      }
+
+      attempts++
+      this.logger.warn(`CaseId ${newCaseId} đã tồn tại, thử lại lần ${attempts}`)
+    }
+
+    throw new BadRequestException('Không thể tạo caseId unique sau nhiều lần thử')
+  }
+
   async submitData(dto: SubmitCaseDto, user: JwtPayload): Promise<CaseResponse> {
     const { case_id, appointment_id, medical_form, action, specialty } = dto
     this.logger.log(`Xử lý case với action ${action}`)
@@ -52,7 +74,12 @@ export class CaseService {
     if ((!case_id || case_id === '') && action === CaseAction.CREATE) {
       if (!specialty) throw new BadRequestException('Chuyên khoa là bắt buộc')
       validateObjectIdOrThrow(specialty, 'Chuyên khoa')
+
+      // Tạo caseId unique
+      const uniqueCaseId = await this.generateUniqueCaseId()
+
       const newCase = new this.caseModel({
+        caseId: uniqueCaseId,
         patient: user.userId,
         specialty,
         medicalForm: medical_form || {},
@@ -62,7 +89,7 @@ export class CaseService {
       })
       await newCase.save()
 
-      this.logger.log(`Đã tạo case mới với ID ${newCase._id}`)
+      this.logger.log(`Đã tạo case mới với caseId ${uniqueCaseId} và ID ${newCase._id}`)
       return {
         message: 'Tạo bệnh án thành công',
         data: {
@@ -100,7 +127,7 @@ export class CaseService {
 
   private async handleSaveAction(
     caseRecord: CaseDocument,
-    medical_form?: Record<string, any>,
+    medical_form?: MedicalFormType,
   ): Promise<CaseResponse> {
     if (caseRecord.status !== 'draft') {
       throw new BadRequestException('Chỉ có thể lưu tạm khi ở trạng thái nháp')
@@ -123,6 +150,7 @@ export class CaseService {
       message: 'Đã lưu bệnh án tạm thời',
       data: {
         case_id: caseRecord._id,
+        caseId: caseRecord.caseId,
         medicalForm: savedCase.medicalForm,
         ...savedCase.toObject(),
       },
@@ -132,7 +160,7 @@ export class CaseService {
   private async handleSubmitAction(
     caseRecord: CaseDocument,
     appointment_id?: string,
-    medical_form?: Record<string, any>,
+    medical_form?: MedicalFormType,
   ): Promise<CaseResponse> {
     switch (caseRecord.status) {
       case 'draft':
@@ -149,7 +177,7 @@ export class CaseService {
 
         caseRecord.appointmentId = new Types.ObjectId(appointment_id)
         caseRecord.status = 'pending'
-        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái pending`)
+        this.logger.log(`Case ${caseRecord.caseId} chuyển sang trạng thái pending`)
         break
 
       case 'pending':
@@ -171,7 +199,7 @@ export class CaseService {
 
         if (medical_form) caseRecord.medicalForm = medical_form
         caseRecord.status = 'assigned'
-        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái assigned`)
+        this.logger.log(`Case ${caseRecord.caseId} chuyển sang trạng thái assigned`)
         break
 
       case 'assigned':
@@ -187,7 +215,7 @@ export class CaseService {
 
         if (medical_form) caseRecord.medicalForm = medical_form
         caseRecord.status = 'completed'
-        this.logger.log(`Case ${caseRecord._id} chuyển sang trạng thái completed`)
+        this.logger.log(`Case ${caseRecord.caseId} chuyển sang trạng thái completed`)
         break
 
       default:
@@ -199,6 +227,7 @@ export class CaseService {
       message: 'Cập nhật bệnh án thành công',
       data: {
         case_id: caseRecord._id,
+        caseId: caseRecord.caseId,
         ...caseRecord.toObject(),
       },
     }
@@ -212,11 +241,12 @@ export class CaseService {
     caseRecord.status = 'draft'
     await caseRecord.save()
 
-    this.logger.log(`Case ${caseRecord._id} đã được trả về trạng thái draft`)
+    this.logger.log(`Case ${caseRecord.caseId} đã được trả về trạng thái draft`)
     return {
       message: 'Đã trả bệnh án về trạng thái nháp',
       data: {
         case_id: caseRecord._id,
+        caseId: caseRecord.caseId,
         ...caseRecord.toObject(),
       },
     }
@@ -239,7 +269,7 @@ export class CaseService {
         if (caseRecord.status === 'pending') {
           caseRecord.status = 'assigned'
           this.logger.log(
-            `Case ${caseRecord._id} tự động chuyển sang assigned do appointment được xác nhận`,
+            `Case ${caseRecord.caseId} tự động chuyển sang assigned do appointment được xác nhận`,
           )
         }
         break
@@ -247,7 +277,7 @@ export class CaseService {
       case 'COMPLETED':
         if (caseRecord.status === 'assigned') {
           this.logger.log(
-            `Appointment ${appointmentId} đã hoàn thành, case ${caseRecord._id} có thể chuyển sang completed`,
+            `Appointment ${appointmentId} đã hoàn thành, case ${caseRecord.caseId} có thể chuyển sang completed`,
           )
         }
         break
@@ -279,6 +309,8 @@ export class CaseService {
           createdBy: doctorId,
           note: dto.note || '',
           pharmacyId: dto.pharmacyId || '',
+          shippingAddress: dto.shippingAddress || '',
+          shippingPhone: dto.shippingPhone || '',
           medications,
         },
       },
@@ -353,6 +385,7 @@ export class CaseService {
       filter.$or = [
         { 'medicalForm.symptoms': { $regex: q, $options: 'i' } },
         { 'medicalForm.note': { $regex: q, $options: 'i' } },
+        { caseId: { $regex: q, $options: 'i' } }, // Thêm tìm kiếm theo caseId
       ]
     }
 
@@ -398,7 +431,7 @@ export class CaseService {
     q?: string,
     status?: CaseStatus,
   ): Promise<CaseListResponse> {
-    const filter: Record<string, any> = {
+    const filter: Record<string, unknown> = {
       isDeleted: false,
     }
 
@@ -406,6 +439,7 @@ export class CaseService {
       filter.$or = [
         { 'medicalForm.symptoms': { $regex: q, $options: 'i' } },
         { 'medicalForm.note': { $regex: q, $options: 'i' } },
+        { caseId: { $regex: q, $options: 'i' } }, // Thêm tìm kiếm theo caseId
       ]
     }
 
@@ -425,7 +459,7 @@ export class CaseService {
     return { total, page, limit, data }
   }
 
-  async deleteCase(id: string, user: JwtPayload): Promise<CaseResponse> {
+  async deleteCase(id: string): Promise<CaseResponse> {
     validateObjectIdOrThrow(id, 'Bệnh án')
 
     const caseRecord = await this.caseModel.findById(id)

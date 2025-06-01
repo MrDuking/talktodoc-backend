@@ -108,6 +108,9 @@ export class Doctor extends BaseUser {
   @Prop({ type: String, required: false })
   position?: string
 
+  @Prop({ type: Number, required: false, default: 10 })
+  performanceScore?: number
+
   @Prop({
     type: [
       {

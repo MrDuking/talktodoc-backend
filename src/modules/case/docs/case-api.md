@@ -100,13 +100,18 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
           "createdAt": "2024-05-20T12:00:00.000Z",
           "createdBy": "664b1e2f2f8b2c001e7e7e81",
           "note": "Uống thuốc sau ăn",
+          "pharmacyId": "664b1e2f2f8b2c001e7e7e91",
+          "shippingAddress": "123 Đường ABC, Quận 1, TP.HCM",
+          "shippingPhone": "0901234567",
           "medications": [
             {
               "medicationId": "664b1e2f2f8b2c001e7e7e90",
               "name": "Paracetamol",
               "dosage": "500mg",
               "usage": "1 viên mỗi 8 tiếng",
-              "duration": "3 ngày"
+              "duration": "3 ngày",
+              "price": 50000,
+              "quantity": 6
             }
           ]
         }
@@ -140,13 +145,18 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
       "createdAt": "ISODate",
       "createdBy": { "_id": "string", "fullName": "Bác sĩ" },
       "note": "string",
+      "pharmacyId": "string",
+      "shippingAddress": "string",
+      "shippingPhone": "string",
       "medications": [
         {
           "medicationId": "string",
           "name": "string",
           "dosage": "string",
           "usage": "string",
-          "duration": "string"
+          "duration": "string",
+          "price": "number",
+          "quantity": "number"
         }
       ]
     }
@@ -179,12 +189,17 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
 ```json
 {
   "note": "string (optional)",
+  "pharmacyId": "string (MongoId, optional)",
+  "shippingAddress": "string (optional)",
+  "shippingPhone": "string (optional)",
   "medications": [
     {
       "medicationId": "string (MongoId)",
       "dosage": "string",
       "usage": "string",
-      "duration": "string"
+      "duration": "string",
+      "price": "number",
+      "quantity": "number"
     }
   ]
 }
@@ -193,7 +208,9 @@ Module này cung cấp các API để quản lý bệnh án (case) cho bệnh nh
 - **Lưu ý:**
 
   - Không cần kiểm tra medicationId có tồn tại trong bảng medicine hay không.
-  - Các field của thuốc (medicationId, dosage, usage, duration, name) sẽ được lưu đúng như FE gửi lên. Nếu không có name sẽ mặc định là 'Không tên thuốc'.
+  - Các field của thuốc (medicationId, dosage, usage, duration, name, price, quantity) sẽ được lưu đúng như FE gửi lên. Nếu không có name sẽ mặc định là 'Không tên thuốc'.
+  - `shippingAddress`: Địa chỉ giao hàng thuốc (tùy chọn).
+  - `shippingPhone`: Số điện thoại liên hệ giao hàng (tùy chọn).
 
 - **Response:**
 

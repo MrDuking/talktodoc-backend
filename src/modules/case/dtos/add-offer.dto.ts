@@ -51,4 +51,14 @@ export class AddOfferDto {
   @IsOptional()
   @IsString()
   pharmacyId?: string
+
+  @ApiProperty({ description: 'Địa chỉ giao hàng' })
+  @IsOptional()
+  @IsString()
+  shippingAddress?: string
+
+  @ApiProperty({ description: 'Số điện thoại giao hàng' })
+  @IsOptional()
+  @IsString()
+  shippingPhone?: string
 }
