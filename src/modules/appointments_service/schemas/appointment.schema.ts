@@ -42,11 +42,17 @@ export class Appointment {
   @Prop({ type: Date })
   cancelledAt?: Date
 
+  @Prop({ type: Date })
+  completedAt?: Date
+
   @Prop()
   doctorNote?: string
 
   @Prop()
   reason?: string
+
+  @Prop({ type: Date, default: Date.now })
+  createdAt!: Date
 
   @Prop({
     type: {
@@ -75,3 +81,18 @@ export class Appointment {
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment)
+
+// Thêm middleware để đảm bảo createdAt và completedAt
+AppointmentSchema.pre<AppointmentDocument>('save', function (next) {
+  // Đảm bảo createdAt được set nếu chưa có (cho data cũ)
+  if (this.isNew && !this.createdAt) {
+    this.createdAt = new Date()
+  }
+
+  // Tự động set completedAt khi status chuyển thành COMPLETED
+  if (this.status === 'COMPLETED' && !this.completedAt) {
+    this.completedAt = new Date()
+  }
+
+  next()
+})

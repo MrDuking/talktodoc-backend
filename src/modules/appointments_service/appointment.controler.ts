@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Request } from 'express'
-import { AppointmentService } from './appointment.service'
+import { AppointmentService, type AppointmentResponse } from './appointment.service'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos'
 import { Appointment } from './schemas/appointment.schema'
 
@@ -59,7 +59,7 @@ export class AppointmentController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết lịch hẹn' })
-  async findOne(@Param('id') id: string): Promise<any> {
+  async findOne(@Param('id') id: string): Promise<AppointmentResponse> {
     return this.appointmentService.findOne(id)
   }
 
@@ -142,5 +142,13 @@ export class AppointmentController {
       +page,
       +limit,
     )
+  }
+
+  @Patch('migrate-status')
+  @ApiOperation({ summary: 'Migrate toàn bộ status của appointment sang trạng thái mong muốn' })
+  @ApiResponse({ status: 200, description: 'Đã migrate status thành công.' })
+  async migrateStatus(@Body('status') status: string): Promise<{ message: string }> {
+    await this.appointmentService.migrateStatus(status)
+    return { message: 'Đã migrate status thành công.' }
   }
 }

@@ -60,7 +60,7 @@ interface PopulatedAppointment {
   updatedAt?: Date
 }
 
-interface AppointmentResponse {
+export type AppointmentResponse = {
   _id: string
   appointmentId: string
   patient: Patient
@@ -106,6 +106,11 @@ export class AppointmentService {
       { status: { $exists: true } },
       { $set: { status: 'PENDING' } },
     )
+  }
+
+  async migrateStatus(status: string): Promise<void> {
+    if (!status) throw new BadRequestException('Thiếu status')
+    await this.appointmentModel.updateMany({}, { $set: { status } })
   }
 
   private async checkDoctorAvailability(
@@ -267,8 +272,22 @@ export class AppointmentService {
       appointment.duration_call = updateDto.duration_call
       delete updateDto.duration_call
     }
+
+    // Xử lý hoàn thành lịch hẹn
+    if (updateDto.status === 'COMPLETED') {
+      appointment.status = 'COMPLETED'
+      appointment.completedAt = new Date()
+
+      // Cập nhật trạng thái case liên kết thành completed (nếu có)
+      await this.caseModel.findOneAndUpdate(
+        { appointmentId: appointment._id },
+        { $set: { status: 'completed' } },
+      )
+
+      this.logger.log(`Lịch hẹn ${appointment.appointmentId} đã được hoàn thành`)
+    }
     // Xử lý hủy lịch hẹn
-    if (updateDto.status === 'CANCELLED') {
+    else if (updateDto.status === 'CANCELLED') {
       appointment.status = 'CANCELLED'
       appointment.cancelledAt = new Date()
       appointment.reason = updateDto.reason || 'Không có lý do'

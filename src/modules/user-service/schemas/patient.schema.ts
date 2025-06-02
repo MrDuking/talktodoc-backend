@@ -55,6 +55,9 @@ export class Patient extends BaseUser {
   @Prop({ type: [Appointment], default: [] })
   appointments!: Appointment[]
 
+  @Prop({ type: Date, default: Date.now })
+  createdAt!: Date
+
   @Prop({
     type: {
       name: { type: String },
@@ -107,6 +110,10 @@ PatientSchema.pre<PatientDocument>('save', async function (next) {
 
   if (this.isNew && this.walletBalance === undefined) {
     this.walletBalance = 0
+  }
+
+  if (this.isNew && !this.createdAt) {
+    this.createdAt = new Date()
   }
 
   next()

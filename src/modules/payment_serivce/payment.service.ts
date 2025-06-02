@@ -47,10 +47,23 @@ export class PaymentService {
     process.env.TZ = 'Asia/Ho_Chi_Minh'
     const date = new Date()
     const createDate = moment(date).format('YYYYMMDDHHmmss')
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, '0')
-    const orderId = moment(date).format('DDHHmmss') + randomNum
+    // const randomNum = Math.floor(Math.random() * 1000)
+    //   .toString()
+    //   .padStart(3, '0')
+    // const orderId = moment(date).format('DDHHmmss') + randomNum
+
+    let orderId = ''
+    let isUnique = false
+    while (!isUnique) {
+      const randomNum = Math.floor(Math.random() * 1000000)
+        .toString()
+        .padStart(6, '0')
+      orderId = `OD-${randomNum}`
+      const existing = await this.orderMappingModel.exists({ orderId })
+      if (!existing) {
+        isUnique = true
+      }
+    }
 
     this.logger.log(`Generated orderId: ${orderId}`)
 

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
 
-@Schema()
+@Schema({ timestamps: true })
 export class OrderMapping extends Document {
   @Prop({ required: true, unique: true })
   orderId!: string
@@ -21,7 +21,7 @@ export class OrderMapping extends Document {
   @Prop({ required: true, enum: ['pending', 'completed', 'failed'] })
   status!: string
 
-  @Prop({ required: true })
+  @Prop({ type: Date, default: Date.now })
   createdAt!: Date
 
   @Prop()
