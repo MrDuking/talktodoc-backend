@@ -123,4 +123,21 @@ export class DoctorController {
   async getAvailability(@Param('_id') id: string): Promise<Doctor> {
     return this.usersService.getDoctorById(id)
   }
+
+  @ApiOperation({ summary: 'Cập nhật thông tin ngân hàng cho doctor' })
+  @ApiParam({ name: '_id', description: 'Doctor MongoDB _id' })
+  @Post(':_id/bank')
+  async updateBank(
+    @Param('_id') id: string,
+    @Body('bank')
+    bank: {
+      accountNumber?: string
+      bankName?: string
+      branch?: string
+      accountHolder?: string
+      phoneNumber?: string
+    },
+  ) {
+    return this.usersService.updateBankInfo(id, bank)
+  }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsEnum, IsMongoId, IsObject, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsEnum, IsMongoId, IsObject, IsOptional, IsString } from 'class-validator'
 
 export enum PaymentStatus {
   PAID = 'PAID',
@@ -71,4 +71,10 @@ export class UpdateAppointmentDto {
   @IsOptional()
   @IsString()
   notes?: string
+
+  @IsOptional()
+  @ApiProperty({ required: false, description: 'Giảm điểm bác sĩ' })
+  @IsOptional()
+  @IsBoolean()
+  decreasePoint?: boolean
 }

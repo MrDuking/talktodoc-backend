@@ -73,4 +73,21 @@ export class EmployeeController {
   deleteEmployee(@Param('_id') id: string) {
     return this.usersService.deleteEmployee(id)
   }
+
+  @ApiOperation({ summary: 'Cập nhật thông tin ngân hàng cho employee' })
+  @ApiParam({ name: '_id', description: 'Employee MongoDB _id' })
+  @Post(':_id/bank')
+  async updateBank(
+    @Param('_id') id: string,
+    @Body('bank')
+    bank: {
+      accountNumber?: string
+      bankName?: string
+      branch?: string
+      accountHolder?: string
+      phoneNumber?: string
+    },
+  ) {
+    return this.usersService.updateBankInfo(id, bank)
+  }
 }

@@ -125,9 +125,6 @@ export class AppointmentService {
         slot: slot,
         status: { $nin: ['CANCELLED', 'REJECTED'] },
       }
-
-      this.logger.log('Kiểm tra lịch trống của bác sĩ với query:', JSON.stringify(query))
-
       const existingAppointment = await this.appointmentModel.findOne(query)
       this.logger.log('Kết quả kiểm tra:', existingAppointment)
 
@@ -142,7 +139,7 @@ export class AppointmentService {
   }
 
   async create(createDto: CreateAppointmentDto & { patient: string }): Promise<Appointment> {
-    const { case_id, specialty, doctor, date, slot, timezone, patient } = createDto
+    const { case_id, specialty, doctor, date, slot, timezone, patient, paymentMethod } = createDto
 
     if (!case_id || !doctor || !date || !slot || !specialty) {
       throw new BadRequestException('Vui lòng cung cấp đầy đủ thông tin để đặt lịch hẹn')
@@ -180,6 +177,43 @@ export class AppointmentService {
       status: 'PENDING',
     })
 
+    // Xử lý thanh toán bằng ví
+    if (paymentMethod === 'WALLET') {
+      // FE truyền payment.total, nếu không có thì mặc định 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const paymentField = (createDto as any).payment
+      const total = paymentField && paymentField.total ? paymentField.total : 0
+      if (!total || total <= 0) {
+        throw new BadRequestException('Thiếu thông tin số tiền thanh toán')
+      }
+      // Lấy thông tin bệnh nhân
+      const patientInfo = await this.usersService.getPatientById(patient)
+      if (!patientInfo) throw new NotFoundException('Không tìm thấy bệnh nhân')
+      if (patientInfo.walletBalance < total) {
+        throw new BadRequestException('Số dư ví không đủ để thanh toán')
+      }
+      // Trừ tiền và tạo giao dịch
+      await this.usersService.updateWalletBalance(
+        patient,
+        total,
+        'WITHDRAW',
+        `Thanh toán lịch hẹn ${appointmentId} bằng ví`,
+      )
+      // Cập nhật trạng thái payment
+      appointment.payment = {
+        ...(paymentField || {}),
+        status: 'PAID',
+        paymentMethod: 'WALLET',
+        total,
+      }
+    } else if ((createDto as any).payment) {
+      appointment.payment = {
+        ...(createDto as any).payment,
+        status: 'UNPAID',
+        paymentMethod: paymentMethod || 'VNPAY',
+      }
+    }
+
     const savedAppointment = await appointment.save()
 
     caseRecord.appointmentId = new mongoose.Types.ObjectId(savedAppointment._id)
@@ -191,15 +225,41 @@ export class AppointmentService {
   async findAppointments(
     user: JwtPayload,
     query?: string,
-    page = 1,
-    limit = 10,
-  ): Promise<{ total: number; page: number; limit: number; data: Appointment[] }> {
+    page?: number,
+    limit?: number,
+  ): Promise<{ total: number; page?: number; limit?: number; data: Appointment[] }> {
     const filter: Record<string, unknown> = {}
+
+    // Lọc theo role
+    if (user.role === 'PATIENT') {
+      filter.patient = user.userId
+    } else if (user.role === 'DOCTOR') {
+      filter.doctor = user.userId
+    }
+    // ADMIN thì không filter gì thêm
+
     if (query) {
       const regex = { $regex: query, $options: 'i' }
       filter.$or = [{ appointmentId: regex }, { date: regex }, { status: regex }]
     }
 
+    // Nếu không truyền page, limit, query => trả toàn bộ
+    const isNoPagination = !query && (!page || page < 1) && (!limit || limit < 1)
+    if (isNoPagination) {
+      const data = await this.appointmentModel
+        .find(filter)
+        .populate({
+          path: 'doctor',
+          populate: { path: 'specialty' },
+        })
+        .populate('specialty')
+        .populate('patient')
+        .sort({ createdAt: -1 })
+        .exec()
+      return { total: data.length, data }
+    }
+
+    // Có search hoặc phân trang
     const total = await this.appointmentModel.countDocuments(filter)
     const data = await this.appointmentModel
       .find(filter)
@@ -209,12 +269,12 @@ export class AppointmentService {
       })
       .populate('specialty')
       .populate('patient')
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .skip(((page || 1) - 1) * (limit || 10))
+      .limit(limit || 10)
       .sort({ createdAt: -1 })
       .exec()
 
-    return { total, page, limit, data }
+    return { total, page: page || 1, limit: limit || 10, data }
   }
 
   async findOne(id: string): Promise<AppointmentResponse> {
@@ -291,13 +351,16 @@ export class AppointmentService {
       appointment.status = 'CANCELLED'
       appointment.cancelledAt = new Date()
       appointment.reason = updateDto.reason || 'Không có lý do'
-
+      console.log('appointment', appointment)
       // Hoàn tiền vào ví của bệnh nhân nếu đã thanh toán
       if (appointment.payment?.status === 'PAID') {
         const refundAmount = appointment.payment.total
         const patientId = appointment.patient.toString()
-
+        const doctorId = appointment.doctor.toString()
         try {
+          if (updateDto.decreasePoint) {
+            await this.usersService.decreaseDoctorPoint(doctorId, 1)
+          }
           await this.usersService.updateWalletBalance(
             patientId,
             refundAmount,
@@ -496,7 +559,7 @@ export class AppointmentService {
     await this.appointmentModel.findByIdAndUpdate(id, {
       status: 'CANCELLED',
       cancelledAt: new Date(),
-      doctorNote: reason,
+      reason: reason,
     })
 
     if (appointment.payment?.status === 'PAID') {

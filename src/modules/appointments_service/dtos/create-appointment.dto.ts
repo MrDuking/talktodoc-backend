@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsMongoId, IsNotEmpty, IsString } from 'class-validator'
+import { IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 
 export class CreateAppointmentDto {
   @ApiProperty()
@@ -26,4 +26,9 @@ export class CreateAppointmentDto {
   @IsString()
   @IsNotEmpty()
   timezone!: string
+
+  @ApiProperty({ required: false, description: 'Phương thức thanh toán: WALLET hoặc VNPAY' })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string
 }

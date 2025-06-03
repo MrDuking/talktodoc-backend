@@ -556,4 +556,34 @@ export class UsersService {
       return patient
     }
   }
+
+  async decreaseDoctorPoint(doctorId: string, amount: number): Promise<Doctor | null | undefined> {
+    const doctor = await this.doctorModel.findById(doctorId)
+    if (!doctor) throw new NotFoundException('Không tìm thấy bác sĩ')
+    doctor.performanceScore = (doctor.performanceScore || 0) - amount
+    await doctor.save()
+    console.log('Đã trừ điểm bác sĩ', doctor)
+    return doctor
+  }
+
+  async updateBankInfo(
+    userId: string,
+    bank: {
+      accountNumber?: string
+      bankName?: string
+      branch?: string
+      accountHolder?: string
+      phoneNumber?: string
+    },
+  ): Promise<Doctor | Patient | Employee | null> {
+    if (!mongoose.Types.ObjectId.isValid(userId)) throw new BadRequestException('Invalid user ID')
+    // Ưu tiên tìm theo thứ tự: doctor, patient, employee
+    let user = await this.doctorModel.findByIdAndUpdate(userId, { bank }, { new: true })
+    if (user) return user
+    user = await this.patientModel.findByIdAndUpdate(userId, { bank }, { new: true })
+    if (user) return user
+    user = await this.employeeModel.findByIdAndUpdate(userId, { bank }, { new: true })
+    if (user) return user
+    throw new NotFoundException('User not found')
+  }
 }

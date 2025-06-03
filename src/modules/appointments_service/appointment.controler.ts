@@ -54,7 +54,13 @@ export class AppointmentController {
   ): Promise<{ total: number; page: number; limit: number; data: Appointment[] }> {
     const user = req.user
     if (!user) throw new UnauthorizedException('Token không hợp lệ')
-    return this.appointmentService.findAppointments(user, q, +page, +limit)
+    const result = await this.appointmentService.findAppointments(user, q, +page, +limit)
+    return {
+      total: result.total,
+      page: +page,
+      limit: +limit,
+      data: result.data,
+    }
   }
 
   @Get(':id')

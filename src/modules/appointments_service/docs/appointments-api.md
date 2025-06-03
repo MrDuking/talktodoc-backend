@@ -6,7 +6,7 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
 
 ---
 
-## 1. Tạo mới lịch hẹn
+## 1. Tạo mới lịch hẹn (HỖ TRỢ THANH TOÁN BẰNG VÍ)
 
 - **Endpoint:** `POST /appointments`
 - **Yêu cầu xác thực:** Bearer Token (bệnh nhân)
@@ -19,11 +19,32 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
   "doctor": "string (MongoId)",
   "date": "YYYY-MM-DD",
   "slot": "string (ví dụ: 09:00-09:30)",
-  "timezone": "Asia/Ho_Chi_Minh"
+  "timezone": "Asia/Ho_Chi_Minh",
+  "paymentMethod": "WALLET | VNPAY", // BẮT BUỘC nếu dùng ví
+  "payment": {
+    "total": 300000, // BẮT BUỘC nếu dùng ví
+    "platformFee": 50000,
+    "doctorFee": 250000,
+    "discount": 0
+  }
 }
 ```
 
-- **Response:**
+### Hướng dẫn FE:
+
+- Nếu user chọn thanh toán bằng ví (`paymentMethod: 'WALLET'`):
+  - **BẮT BUỘC** truyền đủ trường `payment.total` (và các trường phí nếu có).
+  - FE nên kiểm tra số dư ví trước khi gọi API (nếu có thể), hoặc handle lỗi trả về từ BE.
+- Nếu chọn `paymentMethod: 'VNPAY'`, giữ nguyên flow cũ.
+
+### Quy trình BE khi thanh toán bằng ví:
+
+1. Kiểm tra số dư ví bệnh nhân.
+2. Nếu đủ tiền, tự động trừ tiền và tạo giao dịch.
+3. Nếu không đủ tiền, trả về lỗi 400.
+4. Trả về appointment với payment.status = 'PAID', paymentMethod = 'WALLET'.
+
+- **Response (thanh toán ví thành công):**
 
 ```json
 {
@@ -35,14 +56,35 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
   "date": "YYYY-MM-DD",
   "slot": "string",
   "timezone": "string",
-  "status": "PENDING"
+  "status": "PENDING",
+  "payment": {
+    "platformFee": 50000,
+    "doctorFee": 250000,
+    "discount": 0,
+    "total": 300000,
+    "status": "PAID",
+    "paymentMethod": "WALLET"
+  }
 }
 ```
 
-- **Lỗi thường gặp:**
-  - 400: Thiếu trường bắt buộc, dữ liệu không hợp lệ.
-  - 403: Không có quyền tạo lịch hẹn cho case này.
-  - 404: Không tìm thấy bệnh án.
+#### Giải thích các field:
+
+- `paymentMethod`: Phương thức thanh toán, FE truyền lên là 'WALLET' hoặc 'VNPAY'.
+- `payment.status`: 'PAID' nếu đã trừ tiền ví thành công, 'UNPAID' nếu chờ thanh toán qua VNPAY.
+- `total`: Số tiền đã trừ khỏi ví (nếu dùng ví).
+
+#### Lỗi thường gặp FE cần handle:
+
+- 400: Thiếu trường bắt buộc, dữ liệu không hợp lệ, **hoặc số dư ví không đủ**.
+- 403: Không có quyền tạo lịch hẹn cho case này.
+- 404: Không tìm thấy bệnh án.
+
+#### Hướng dẫn xử lý trên FE:
+
+- Nếu BE trả về lỗi số dư không đủ, hiển thị thông báo cho user.
+- Nếu thành công, lịch hẹn sẽ có trạng thái payment là `PAID` và paymentMethod là `WALLET`.
+- Nếu chọn VNPAY, FE thực hiện redirect sang cổng thanh toán như cũ.
 
 ---
 

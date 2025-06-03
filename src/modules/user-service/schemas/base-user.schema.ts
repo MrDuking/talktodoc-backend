@@ -37,4 +37,16 @@ export abstract class BaseUser {
     phone_code: number
     districts?: any[]
   }
+
+  @Prop({
+    type: Object,
+    default: null,
+  })
+  bank?: {
+    accountNumber?: string
+    bankName?: string
+    branch?: string
+    accountHolder?: string
+    phoneNumber?: string
+  }
 }

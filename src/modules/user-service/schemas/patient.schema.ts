@@ -108,8 +108,11 @@ PatientSchema.pre<PatientDocument>('save', async function (next) {
     this.id = uniqueId
   }
 
-  if (this.isNew && this.walletBalance === undefined) {
+  if (this.isNew && (this.walletBalance === undefined || this.walletBalance === null)) {
     this.walletBalance = 0
+  }
+  if (this.isNew && (!this.walletHistory || !Array.isArray(this.walletHistory))) {
+    this.walletHistory = []
   }
 
   if (this.isNew && !this.createdAt) {

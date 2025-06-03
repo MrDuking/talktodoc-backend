@@ -81,4 +81,21 @@ export class PatientController {
   deletePatient(@Param('_id') id: string): Promise<void> {
     return this.usersService.deletePatient(id)
   }
+
+  @ApiOperation({ summary: 'Cập nhật thông tin ngân hàng cho patient' })
+  @ApiParam({ name: '_id', description: 'Patient MongoDB _id' })
+  @Post(':_id/bank')
+  async updateBank(
+    @Param('_id') id: string,
+    @Body('bank')
+    bank: {
+      accountNumber?: string
+      bankName?: string
+      branch?: string
+      accountHolder?: string
+      phoneNumber?: string
+    },
+  ) {
+    return this.usersService.updateBankInfo(id, bank)
+  }
 }
