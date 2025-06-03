@@ -17,6 +17,7 @@ import { PaymentModule } from './modules/payment_serivce/payment.module'
 import { PharmacyModule } from './modules/pharmacy_service/pharmacy.module'
 import { ReportModule } from './modules/report-service/report.module'
 import { SpecialtyModule } from './modules/specialty_service/specialty.module'
+import { TransactionAnalyticsModule } from './modules/transaction_analytics/transaction-analytics.module'
 import { UsersModule } from './modules/user-service/user.module'
 
 @Module({
@@ -50,6 +51,7 @@ import { UsersModule } from './modules/user-service/user.module'
     CaseModule,
     PaymentModule,
     ReportModule,
+    TransactionAnalyticsModule,
   ],
 })
 export class AppModule {}

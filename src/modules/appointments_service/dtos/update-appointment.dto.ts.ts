@@ -53,7 +53,10 @@ export class UpdateAppointmentDto {
   @ApiProperty({ required: false, description: 'Lý do hủy lịch hẹn' })
   @IsOptional()
   @IsString()
-  reason?: string
+  reason?: {
+    label: string
+    decreaseScore: number
+  }
 
   @ApiProperty({ required: false, enum: AppointmentStatus })
   @IsOptional()

@@ -7,6 +7,7 @@ import {
   Logger,
   Param,
   Post,
+  Query,
 } from '@nestjs/common'
 import { PaymentCallbackDto } from './dto/payment-callback.dto'
 import { PaymentRequestDto } from './dto/payment-request.dto'
@@ -69,9 +70,13 @@ export class PaymentController {
   }
 
   @Get('all-orders')
-  async getAllOrders() {
+  async getAllOrders(
+    @Query('doctor') doctor?: string,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
     try {
-      return await this.paymentService.getAllOrders()
+      return await this.paymentService.getAllOrders({ doctor, start, end })
     } catch (error) {
       this.logger.error('Failed to get all orders', error)
       throw new HttpException('Failed to fetch all orders', HttpStatus.INTERNAL_SERVER_ERROR)

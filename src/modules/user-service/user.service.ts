@@ -557,13 +557,42 @@ export class UsersService {
     }
   }
 
-  async decreaseDoctorPoint(doctorId: string, amount: number): Promise<Doctor | null | undefined> {
-    const doctor = await this.doctorModel.findById(doctorId)
-    if (!doctor) throw new NotFoundException('Không tìm thấy bác sĩ')
-    doctor.performanceScore = (doctor.performanceScore || 0) - amount
-    await doctor.save()
-    console.log('Đã trừ điểm bác sĩ', doctor)
-    return doctor
+  async decreaseDoctorPoint(doctorId: string, score: number) {
+    await this.doctorModel.findByIdAndUpdate(
+      doctorId,
+      { $inc: { performanceScore: -score } },
+      { new: true },
+    )
+  }
+
+  async addDoctorPerformanceScoreLog({
+    doctorId,
+    appointmentId,
+    appointment,
+    score,
+    reason,
+  }: {
+    doctorId: string
+    appointmentId: string
+    appointment: string
+    score: number
+    reason: string
+  }) {
+    await this.doctorModel.findByIdAndUpdate(
+      doctorId,
+      {
+        $push: {
+          performanceScoreLogs: {
+            appointmentId: appointmentId,
+            appointment: appointment,
+            score: -Math.abs(score),
+            reason,
+            createdAt: new Date(),
+          },
+        },
+      },
+      { new: true },
+    )
   }
 
   async updateBankInfo(

@@ -381,47 +381,56 @@ export class CaseService {
       isDeleted: false,
     }
 
-    if (q) {
-      filter.$or = [
-        { 'medicalForm.symptoms': { $regex: q, $options: 'i' } },
-        { 'medicalForm.note': { $regex: q, $options: 'i' } },
-        { caseId: { $regex: q, $options: 'i' } }, // Thêm tìm kiếm theo caseId
-      ]
+    if (user.role === 'PATIENT') {
+      filter.patient = user.userId
     }
 
     if (status) {
       filter.status = status
     }
 
-    const total = await this.caseModel.countDocuments(filter)
-    const data = await this.caseModel
+    if (q) {
+      filter.$or = [
+        { 'medicalForm.symptoms': { $regex: q, $options: 'i' } },
+        { 'medicalForm.note': { $regex: q, $options: 'i' } },
+        { caseId: { $regex: q, $options: 'i' } },
+      ]
+    }
+
+    let data: CaseDocument[] | any = await this.caseModel
       .find(filter)
       .sort({ updatedAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
       .populate({
         path: 'appointmentId',
-        populate: [
-          {
-            path: 'doctor',
-          },
-          {
-            path: 'patient',
-          },
-        ],
+        populate: [{ path: 'doctor' }, { path: 'patient' }],
       })
       .populate({ path: 'specialty' })
       .lean()
 
-    this.logger.log(`Tìm thấy ${data.length} case`)
-    // Đảm bảo mỗi case chỉ trả về patient là id (string)
-    const mappedData = (data || []).map(item => ({
+    // Nếu là doctor, chỉ giữ lại case mà appointmentId.doctor === user.userId
+    if (user.role === 'DOCTOR') {
+      data = data.filter(
+        (c: CaseDocument | any) =>
+          c.appointmentId &&
+          c.appointmentId.doctor &&
+          c.appointmentId.doctor._id.toString() === user.userId,
+      )
+    }
+
+    // Tính lại total sau khi filter
+    const total = data.length
+
+    // Phân trang lại sau filter
+    const pagedData = data.slice((page - 1) * limit, page * limit)
+
+    const mappedData = (pagedData || []).map((item: CaseDocument) => ({
       ...item,
       patient:
         typeof item.patient === 'object' && item.patient?._id
           ? item.patient._id.toString()
           : item.patient?.toString?.() || item.patient,
     }))
+
     return { total, page, limit, data: mappedData }
   }
 

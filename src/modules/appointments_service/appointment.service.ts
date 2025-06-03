@@ -1,13 +1,16 @@
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface'
 import { Case } from '@/modules/case/schemas/case.schema'
+import { PaymentService } from '@/modules/payment_serivce/payment.service'
 import { MailService } from '@modules/mail/mail.service'
 import { UsersService } from '@modules/user-service/user.service'
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import mongoose, { Model, Types } from 'mongoose'
@@ -88,6 +91,12 @@ interface DoctorAppointment {
   status: string
 }
 
+// Helper ép kiểu
+function getDoctorIdString(doctor: any): string {
+  if (typeof doctor === 'object' && doctor?._id) return doctor._id.toString()
+  return doctor?.toString?.() || String(doctor)
+}
+
 @Injectable()
 export class AppointmentService {
   private readonly logger = new Logger(AppointmentService.name)
@@ -99,6 +108,8 @@ export class AppointmentService {
     private readonly caseModel: Model<Case>,
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
+    @Inject(forwardRef(() => PaymentService))
+    private readonly paymentService: PaymentService,
   ) {}
 
   async migrateDefaultStatus(): Promise<void> {
@@ -152,12 +163,7 @@ export class AppointmentService {
     }
 
     // Kiểm tra trùng lịch
-    const { isAvailable, existingAppointment } = await this.checkDoctorAvailability(
-      doctor,
-      date,
-      slot,
-    )
-    console.log('existingAppointment', existingAppointment)
+    const { isAvailable } = await this.checkDoctorAvailability(doctor, date, slot)
     if (!isAvailable) {
       throw new BadRequestException(
         `Bác sĩ đã có lịch hẹn vào ${date} ${slot}. Vui lòng chọn thời gian khác.`,
@@ -179,10 +185,12 @@ export class AppointmentService {
 
     // Xử lý thanh toán bằng ví
     if (paymentMethod === 'WALLET') {
-      // FE truyền payment.total, nếu không có thì mặc định 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const paymentField = (createDto as any).payment
-      const total = paymentField && paymentField.total ? paymentField.total : 0
+      const paymentField = (createDto as { payment?: Record<string, unknown> }).payment || {}
+      const platformFee =
+        typeof paymentField.platformFee === 'number' ? paymentField.platformFee : 0
+      const doctorFee = typeof paymentField.doctorFee === 'number' ? paymentField.doctorFee : 0
+      const discount = typeof paymentField.discount === 'number' ? paymentField.discount : 0
+      const total = typeof paymentField.total === 'number' ? paymentField.total : 0
       if (!total || total <= 0) {
         throw new BadRequestException('Thiếu thông tin số tiền thanh toán')
       }
@@ -201,14 +209,34 @@ export class AppointmentService {
       )
       // Cập nhật trạng thái payment
       appointment.payment = {
-        ...(paymentField || {}),
+        platformFee,
+        doctorFee,
+        discount,
+        total,
         status: 'PAID',
         paymentMethod: 'WALLET',
-        total,
       }
-    } else if ((createDto as any).payment) {
+
+      // --- Tạo order mapping cho giao dịch ví ---
+      const orderId = await this.paymentService.generateWalletOrderId()
+      await this.paymentService.storeOrderUserMapping(
+        orderId,
+        patient,
+        total,
+        appointment._id.toString(),
+      )
+    } else if ((createDto as { payment?: Record<string, unknown> }).payment) {
+      const paymentField = (createDto as { payment?: Record<string, unknown> }).payment || {}
+      const platformFee =
+        typeof paymentField.platformFee === 'number' ? paymentField.platformFee : 0
+      const doctorFee = typeof paymentField.doctorFee === 'number' ? paymentField.doctorFee : 0
+      const discount = typeof paymentField.discount === 'number' ? paymentField.discount : 0
+      const total = typeof paymentField.total === 'number' ? paymentField.total : 0
       appointment.payment = {
-        ...(createDto as any).payment,
+        platformFee,
+        doctorFee,
+        discount,
+        total,
         status: 'UNPAID',
         paymentMethod: paymentMethod || 'VNPAY',
       }
@@ -230,9 +258,8 @@ export class AppointmentService {
   ): Promise<{ total: number; page?: number; limit?: number; data: Appointment[] }> {
     const filter: Record<string, unknown> = {}
 
-    // Lọc theo role
     if (user.role === 'PATIENT') {
-      filter.patient = user.userId
+      filter.patient = new mongoose.Types.ObjectId(user.userId)
     } else if (user.role === 'DOCTOR') {
       filter.doctor = user.userId
     }
@@ -258,7 +285,6 @@ export class AppointmentService {
         .exec()
       return { total: data.length, data }
     }
-
     // Có search hoặc phân trang
     const total = await this.appointmentModel.countDocuments(filter)
     const data = await this.appointmentModel
@@ -319,7 +345,6 @@ export class AppointmentService {
   ): Promise<{ message: string; data: Appointment }> {
     const appointment = await this.appointmentModel.findById(id)
     if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
-    console.log(updateDto)
     // Nếu có payment, merge từng field vào payment cũ
     if (updateDto.payment) {
       appointment.payment = {
@@ -343,20 +368,60 @@ export class AppointmentService {
         { appointmentId: appointment._id },
         { $set: { status: 'completed' } },
       )
-
+      // Chỉ cộng tiền cho bác sĩ nếu đã thanh toán (PAID)
+      if (appointment.payment?.status === 'PAID') {
+        const doctorId = getDoctorIdString(appointment.doctor)
+        const doctorFee = appointment.payment.doctorFee * 0.9 || 0
+        if (doctorFee > 0) {
+          try {
+            await this.usersService.updateWalletBalance(
+              doctorId,
+              doctorFee,
+              'DEPOSIT',
+              `Nhận tiền công khám từ lịch hẹn ${appointment.appointmentId}`,
+            )
+            this.logger.log(`Đã cộng ${doctorFee}đ vào ví của bác sĩ ${doctorId}`)
+          } catch (err) {
+            this.logger.error('Lỗi khi cộng tiền cho bác sĩ:', err)
+          }
+        }
+      }
       this.logger.log(`Lịch hẹn ${appointment.appointmentId} đã được hoàn thành`)
     }
     // Xử lý hủy lịch hẹn
     else if (updateDto.status === 'CANCELLED') {
       appointment.status = 'CANCELLED'
       appointment.cancelledAt = new Date()
-      appointment.reason = updateDto.reason || 'Không có lý do'
-      console.log('appointment', appointment)
+
+      let decreaseScore = 0
+      let reasonLabel = 'Không có lý do'
+      if (typeof updateDto.reason === 'object' && updateDto.reason !== null) {
+        reasonLabel = updateDto.reason.label || 'Không có lý do'
+        decreaseScore = updateDto.reason.decreaseScore || 0
+      } else {
+        reasonLabel = updateDto.reason || 'Không có lý do'
+      }
+      appointment.reason = reasonLabel
+
+      // Trừ điểm và log nếu có decreaseScore
+      if (decreaseScore > 0) {
+        const doctorId = getDoctorIdString(appointment.doctor)
+        await this.usersService.decreaseDoctorPoint(doctorId, decreaseScore)
+        console.log('appointment._id', appointment)
+        await this.usersService.addDoctorPerformanceScoreLog({
+          doctorId,
+          appointmentId: appointment._id.toString(),
+          appointment: appointment.appointmentId,
+          score: decreaseScore,
+          reason: reasonLabel,
+        })
+      }
+
       // Hoàn tiền vào ví của bệnh nhân nếu đã thanh toán
       if (appointment.payment?.status === 'PAID') {
         const refundAmount = appointment.payment.total
         const patientId = appointment.patient.toString()
-        const doctorId = appointment.doctor.toString()
+        const doctorId = getDoctorIdString(appointment.doctor)
         try {
           if (updateDto.decreasePoint) {
             await this.usersService.decreaseDoctorPoint(doctorId, 1)

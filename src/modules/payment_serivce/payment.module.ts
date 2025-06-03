@@ -1,5 +1,5 @@
 // src/payment/payment.module.ts
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { MongooseModule } from '@nestjs/mongoose'
 import { AppointmentModule } from '../appointments_service/appointment.module'
@@ -14,7 +14,7 @@ import { OrderMapping, OrderMappingSchema } from './schemas/order-mapping.schema
     MongooseModule.forFeature([{ name: OrderMapping.name, schema: OrderMappingSchema }]),
     ConfigModule,
     UsersModule,
-    AppointmentModule,
+    forwardRef(() => AppointmentModule),
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

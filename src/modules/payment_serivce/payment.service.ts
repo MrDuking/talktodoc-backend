@@ -278,7 +278,12 @@ export class PaymentService {
     }
   }
 
-  async getAllOrders(): Promise<
+  async getAllOrders(filter?: {
+    doctor?: string
+    start?: string
+    end?: string
+    q?: string
+  }): Promise<
     {
       orderId: string
       patient: string
@@ -310,7 +315,34 @@ export class PaymentService {
     }[]
   > {
     try {
-      const orders = await this.orderMappingModel.find().sort({ createdAt: -1 }).lean().exec()
+      const query: Record<string, unknown> = {}
+
+      if (filter?.doctor) {
+        // Lấy tất cả order mapping có appointmentId liên kết với doctor này
+        // Sau khi populate appointment, filter lại theo doctor
+        // (Vì OrderMapping không lưu trực tiếp doctorId)
+      }
+
+      if (filter?.start || filter?.end) {
+        query.createdAt = {}
+        if (filter.start) (query.createdAt as Record<string, unknown>).$gte = new Date(filter.start)
+        if (filter.end) (query.createdAt as Record<string, unknown>).$lte = new Date(filter.end)
+      }
+
+      if (filter?.q) {
+        const q = filter.q.trim()
+        const regex = { $regex: q, $options: 'i' }
+        const or: Record<string, unknown>[] = [{ orderId: regex }]
+        // Nếu q là ObjectId hợp lệ, thêm vào filter patient/appointmentId
+        const isObjectId = /^[a-f\d]{24}$/i.test(q)
+        if (isObjectId) {
+          or.push({ patient: q })
+          or.push({ appointmentId: q })
+        }
+        query.$or = or
+      }
+
+      const orders = await this.orderMappingModel.find(query).sort({ createdAt: -1 }).lean().exec()
       const patientIds = orders.map(order => order.patient).filter(Boolean)
       const patients = await this.usersService.findManyPatientsByIds(patientIds)
 
@@ -321,7 +353,7 @@ export class PaymentService {
         true,
       )
 
-      return orders.map(order => {
+      const ordersWithAppointmentInfo = orders.map(order => {
         const userInfo = patients.find(p => p._id.toString() === order.patient)
         const appointmentInfo = appointments.find(a => a._id.toString() === order.appointmentId)
 
@@ -335,6 +367,24 @@ export class PaymentService {
           doctorInfo: doctorInfo,
         }
       })
+
+      // Nếu có filter doctor, filter lại theo doctor sau khi populate appointmentInfo
+      let filteredOrders = filter?.doctor
+        ? ordersWithAppointmentInfo.filter(
+            order => order.appointmentInfo?.doctor?._id?.toString() === filter.doctor,
+          )
+        : ordersWithAppointmentInfo
+
+      if (filter?.q) {
+        const q = filter.q.toLowerCase()
+        filteredOrders = filteredOrders.filter(
+          order =>
+            order.userInfo?.fullName?.toLowerCase().includes(q) ||
+            order.appointmentInfo?.doctor?.fullName?.toLowerCase().includes(q),
+        )
+      }
+
+      return filteredOrders
     } catch (error) {
       this.logger.error('Error getting all orders:', error)
       throw error
@@ -355,5 +405,20 @@ export class PaymentService {
       )
       return false
     }
+  }
+
+  async generateWalletOrderId(): Promise<string> {
+    let orderId = ''
+    let isUnique = false
+    while (!isUnique) {
+      const randomNum = Math.floor(Math.random() * 1000000)
+        .toString()
+        .padStart(6, '0')
+      orderId = `WALLET-${randomNum}`
+      // Kiểm tra trùng lặp
+      const existing = await this.getOrderMapping(orderId).catch(() => null)
+      if (!existing) isUnique = true
+    }
+    return orderId
   }
 }

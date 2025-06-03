@@ -153,6 +153,25 @@ export class Doctor extends BaseUser {
     },
   })
   wallet?: Wallet
+
+  @Prop({
+    type: [
+      {
+        appointmentId: { type: Types.ObjectId, ref: 'Appointment' },
+        score: Number,
+        reason: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  performanceScoreLogs?: {
+    appointmentId: Types.ObjectId
+    appointment: string
+    score: number
+    reason: string
+    createdAt: Date
+  }[]
 }
 
 export const DoctorSchema = SchemaFactory.createForClass(Doctor)
