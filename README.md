@@ -85,3 +85,4 @@ Xem hướng dẫn đóng góp tại [Contributing Guide](./docs/contributing.md
 ## License
 
 MIT
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/MrDuking/DoAnTotNghiep)
