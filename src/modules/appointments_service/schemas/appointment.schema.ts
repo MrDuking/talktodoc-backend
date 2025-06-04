@@ -78,6 +78,14 @@ export class Appointment {
 
   @Prop()
   duration_call?: string
+
+  @Prop({ type: Object })
+  rating?: {
+    ratingScore: number
+    description: string
+    ratedAt: Date
+    ratedBy: string // patientId
+  }
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment)

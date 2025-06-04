@@ -18,9 +18,30 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Request } from 'express'
+import { Types } from 'mongoose'
 import { AppointmentService, type AppointmentResponse } from './appointment.service'
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dtos'
 import { Appointment } from './schemas/appointment.schema'
+
+async function sendMailWithRetry(sendFn: () => Promise<any>, maxDelay = 2000): Promise<void> {
+  let success = false
+  let lastError
+  while (!success) {
+    try {
+      await sendFn()
+      success = true
+    } catch (err: any) {
+      if (err?.status === 429 || err?.response?.status === 429) {
+        // Nếu bị rate limit, chờ rồi thử lại
+        await new Promise(res => setTimeout(res, maxDelay))
+      } else {
+        lastError = err
+        break // Nếu lỗi khác, không retry
+      }
+    }
+  }
+  if (!success && lastError) throw lastError
+}
 
 @ApiTags('Appointments')
 @ApiBearerAuth()
@@ -96,7 +117,8 @@ export class AppointmentController {
   ): Promise<{ message: string }> {
     const doctorId = req.user?.userId
     if (!doctorId) throw new UnauthorizedException('Bác sĩ chưa xác thực')
-    return this.appointmentService.confirmAppointment(id, doctorId, note)
+    await sendMailWithRetry(() => this.appointmentService.confirmAppointment(id, doctorId, note))
+    return { message: 'Đã xác nhận lịch hẹn thành công.' }
   }
 
   @Patch(':id/reject')
@@ -110,7 +132,8 @@ export class AppointmentController {
   ): Promise<{ message: string }> {
     const doctorId = req.user?.userId
     if (!doctorId) throw new UnauthorizedException('Bác sĩ chưa xác thực')
-    return this.appointmentService.rejectAppointment(id, doctorId, reason)
+    await sendMailWithRetry(() => this.appointmentService.rejectAppointment(id, doctorId, reason))
+    return { message: 'Đã từ chối lịch hẹn thành công.' }
   }
 
   @Get('migrate-specialty')
@@ -138,7 +161,7 @@ export class AppointmentController {
     @Query('limit') limit = 10,
   ): Promise<{ total: number; page: number; limit: number; items: Appointment[] }> {
     return this.appointmentService.findAppointmentsByDoctorId(
-      doctorId,
+      new Types.ObjectId(doctorId),
       {
         status,
         date,

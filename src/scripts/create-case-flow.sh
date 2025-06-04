@@ -2,15 +2,15 @@
 
   # ===================== CONFIG =====================
   API_URL="http://localhost:3000"
-  TOKEN="Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRoaWVucHQwMSIsInN1YiI6IjY4MzcwN2ExYjhhNDE0MjM0NzNiYWMxNSIsInJvbGUiOiJQQVRJRU5UIiwiaWF0IjoxNzQ4ODU4OTI3LCJleHAiOjE3NDg5NDUzMjd9.6FPQrgboqk9mHkp1welyVNThmSnIaP_Bgv5BZU0Qbpc" # <-- Thay bằng token thực tế
+  TOKEN="Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRoaWVucHQwMSIsInN1YiI6IjY4MzcwN2ExYjhhNDE0MjM0NzNiYWMxNSIsInJvbGUiOiJQQVRJRU5UIiwiaWF0IjoxNzQ5MDE5MTE2LCJleHAiOjE3NDkxMDU1MTZ9.NL9l1zU5kLL_ZdiHqBfGtzJcBlh7g84RUvgiI6LQKnQ" # <-- Thay bằng token thực tế
   TIMEZONE="Asia/Ho_Chi_Minh"
   AMOUNT=300000
   NUM_RECORDS=10
 
   # ===================== Danh sách ID =====================
-  DOCTOR_ID_LIST=('67f6745b45bccd47d55f5c13' '67fe80c245117ed75e153c9a' '67fe80c245117ed75e153c9b'  '6817d216799c3b531eeed4a6' '68370ce8bc048df96f107abd')
+  DOCTOR_ID_LIST=('67f6745b45bccd47d55f5c16')
   SPECIALTY_ID_LIST=('67eaf20d2186add4b5811e03' '67eaf20d2186add4b5811e05' '67f54027d367ebed6751378e' '67f54075d367ebed6751379d' '67f540a7d367ebed675137ad')
-  PATIENT_ID_LIST=('67e3f1f06b4dbf9229f687d3' '67e3f1d36b4dbf9229f687c9' '683707a1b8a41423473bac15' '6817d384799c3b531eeed556' '6817d38d799c3b531eeed55c')
+  PATIENT_ID_LIST=('680104679380650c32dcce9a' '6817d38d799c3b531eeed55c' '6817d367799c3b531eeed541')
   DATE_LIST=('2025-08-20' '2025-08-21' '2025-08-22' '2025-08-23' '2025-08-24')
   SLOT_LIST=('10:00' '11:00' '12:00' '13:00' '14:00')
   # ===================== Hàm chọn ngẫu nhiên =====================
@@ -117,6 +117,8 @@ done
   -d "{
     \"payment\": {
       \"discount\": 0,
+      \"platformFee\": 0,
+      \"doctorFee\": $AMOUNT,
       \"total\": $AMOUNT,
       \"paymentMethod\": \"VNPAY\"
     }

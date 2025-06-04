@@ -292,6 +292,7 @@ export class ReportService {
       {
         $match: {
           createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+          doctor: { $ne: null },
         },
       },
       {
@@ -303,27 +304,59 @@ export class ReportService {
       },
     ])
 
-    // 3. Lấy revenue theo doctor
-    const revenues = await this.orderMappingModel.aggregate([
+    // 2b. Lấy lượt rating từ appointment (số appointment có rating của doctor trong time range)
+    const ratings = await this.appointmentModel.aggregate([
       {
         $match: {
+          doctor: { $in: doctors.map(d => d._id) },
           createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
-          status: 'completed',
-          doctorId: { $ne: null },
+          rating: { $exists: true, $ne: null },
         },
       },
       {
         $group: {
-          _id: '$doctorId',
-          revenue: { $sum: '$amount' },
+          _id: '$doctor',
+          totalReviews: { $sum: 1 },
         },
       },
     ])
 
+    // 3. Lấy revenue theo doctor (join appointment để lấy doctorId)
+    const revenues = await this.orderMappingModel.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          appointmentId: { $ne: null },
+          createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+        },
+      },
+      {
+        $addFields: {
+          appointmentIdObj: { $toObjectId: '$appointmentId' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'appointments',
+          localField: 'appointmentIdObj',
+          foreignField: '_id',
+          as: 'appointment',
+        },
+      },
+      { $unwind: '$appointment' },
+      {
+        $group: {
+          _id: '$appointment.doctor',
+          revenue: { $sum: '$amount' },
+        },
+      },
+    ])
+    console.log('revenues', revenues)
     // 4. Map và tổng hợp dữ liệu
     const doctorStats: TopDoctorItemDto[] = doctors.map(doc => {
       const app = appointments.find(a => a._id?.toString() === doc._id.toString())
-      const rev = revenues.find(r => r._id === doc.id)
+      const rev = revenues.find(r => r._id?.toString() === doc._id.toString())
+      const ratingObj = ratings.find(r => r._id?.toString() === doc._id.toString())
       // Lấy specialty name đầu tiên (nếu có)
       let specialtyName = ''
       if (Array.isArray(doc.specialty) && doc.specialty.length > 0) {
@@ -339,7 +372,7 @@ export class ReportService {
         specialty: specialtyName,
         experience: doc.experienceYears,
         rating: doc.avgScore,
-        totalReviews: Array.isArray(doc.ratingDetails) ? doc.ratingDetails.length : 0,
+        totalReviews: ratingObj ? ratingObj.totalReviews : 0,
         totalPatients: app ? app.patients.length : 0,
         totalAppointments: app ? app.totalAppointments : 0,
         revenue: rev ? rev.revenue : 0,

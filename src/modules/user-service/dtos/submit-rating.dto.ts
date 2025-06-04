@@ -16,4 +16,8 @@ export class SubmitRatingDto {
   @IsString()
   @IsOptional()
   description?: string
+
+  @ApiProperty({ description: 'ID của bệnh nhân' })
+  @IsString()
+  patientId!: string
 }

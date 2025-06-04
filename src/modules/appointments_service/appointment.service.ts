@@ -92,9 +92,29 @@ interface DoctorAppointment {
 }
 
 // Helper ép kiểu
-function getDoctorIdString(doctor: any): string {
+function getDoctorIdString(doctor: Types.ObjectId | string): string {
   if (typeof doctor === 'object' && doctor?._id) return doctor._id.toString()
-  return doctor?.toString?.() || String(doctor)
+  return doctor?.toString?.() || ''
+}
+
+// Helper gửi email có retry khi bị rate limit
+async function sendMailWithRetry(sendFn: () => Promise<any>, maxDelay = 2000) {
+  let success = false
+  let lastError
+  while (!success) {
+    try {
+      await sendFn()
+      success = true
+    } catch (err: any) {
+      if (err?.status === 429 || err?.response?.status === 429) {
+        await new Promise(res => setTimeout(res, maxDelay))
+      } else {
+        lastError = err
+        break
+      }
+    }
+  }
+  if (!success && lastError) throw lastError
 }
 
 @Injectable()
@@ -175,8 +195,8 @@ export class AppointmentService {
     const appointment = new this.appointmentModel({
       appointmentId,
       patient: new mongoose.Types.ObjectId(patient),
-      doctor,
-      specialty,
+      doctor: new mongoose.Types.ObjectId(doctor),
+      specialty: new mongoose.Types.ObjectId(specialty),
       date,
       slot,
       timezone: timezone || 'Asia/Ho_Chi_Minh',
@@ -261,7 +281,7 @@ export class AppointmentService {
     if (user.role === 'PATIENT') {
       filter.patient = new mongoose.Types.ObjectId(user.userId)
     } else if (user.role === 'DOCTOR') {
-      filter.doctor = user.userId
+      filter.doctor = new mongoose.Types.ObjectId(user.userId)
     }
     // ADMIN thì không filter gì thêm
 
@@ -560,35 +580,39 @@ export class AppointmentService {
       .lean()) as unknown as PopulatedAppointment
 
     if (patient?.patient?.email) {
-      await this.mailService.sendTemplateMail({
-        to: patient.patient.email,
-        subject: 'TalkToDoc : Lịch hẹn đã được xác nhận',
-        template: 'appointment-confirm-patient',
-        variables: {
-          name: patient.patient.fullName,
-          doctor: appointment?.doctor?.fullName,
-          date: appointment.date,
-          slot: appointment.slot,
-          specialty: appointment?.specialty?.name,
-          note: note || '',
-          link: 'https://www.talktodoc.online/',
-        },
-      })
+      await sendMailWithRetry(() =>
+        this.mailService.sendTemplateMail({
+          to: patient.patient.email,
+          subject: 'TalkToDoc : Lịch hẹn đã được xác nhận',
+          template: 'appointment-confirm-patient',
+          variables: {
+            name: patient.patient.fullName,
+            doctor: appointment?.doctor?.fullName,
+            date: appointment.date,
+            slot: appointment.slot,
+            specialty: appointment?.specialty?.name,
+            note: note || '',
+            link: 'https://www.talktodoc.online/',
+          },
+        }),
+      )
     }
     if (appointment?.doctor?.email) {
-      await this.mailService.sendTemplateMail({
-        to: appointment.doctor.email,
-        subject: 'TalkToDoc : Lịch hẹn đã được xác nhận',
-        template: 'doctor-confirm',
-        variables: {
-          name: appointment.doctor.fullName,
-          patient: appointment.patient.fullName,
-          date: appointment.date,
-          slot: appointment.slot,
-          note: note || '',
-          link: 'https://www.talktodoc.online/',
-        },
-      })
+      await sendMailWithRetry(() =>
+        this.mailService.sendTemplateMail({
+          to: appointment.doctor.email,
+          subject: 'TalkToDoc : Lịch hẹn đã được xác nhận',
+          template: 'doctor-confirm',
+          variables: {
+            name: appointment.doctor.fullName,
+            patient: appointment.patient.fullName,
+            date: appointment.date,
+            slot: appointment.slot,
+            note: note || '',
+            link: 'https://www.talktodoc.online/',
+          },
+        }),
+      )
       this.logger.log('Email đã được gửi cho bác sĩ')
     }
     return { message: 'Lịch hẹn đã được xác nhận và email đã được gửi.' }
@@ -714,7 +738,7 @@ export class AppointmentService {
     try {
       const appointments = await this.appointmentModel
         .find({
-          doctor: new Types.ObjectId(doctorId),
+          doctor: doctorId,
           status: { $in: ['CONFIRMED', 'COMPLETED'] },
         })
         .select('_id appointmentId patient specialty date slot status')
@@ -752,7 +776,7 @@ export class AppointmentService {
    * @returns Danh sách lịch hẹn và thông tin phân trang
    */
   async findAppointmentsByDoctorId(
-    doctorId: string,
+    doctorId: Types.ObjectId,
     filter: {
       status?: string | string[]
       date?: string
@@ -769,7 +793,7 @@ export class AppointmentService {
     }
 
     const query: Record<string, unknown> = {
-      doctor: new Types.ObjectId(doctorId),
+      doctor: doctorId,
     }
 
     // Lọc theo trạng thái

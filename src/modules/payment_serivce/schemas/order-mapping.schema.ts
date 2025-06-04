@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import mongoose, { Document, Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class OrderMapping extends Document {
@@ -9,11 +9,17 @@ export class OrderMapping extends Document {
   @Prop({ required: true })
   patient!: string
 
-  @Prop()
-  doctorId?: string
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor',
+  })
+  doctorId?: Types.ObjectId
 
-  @Prop()
-  appointmentId?: string
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Appointment',
+  })
+  appointmentId?: Types.ObjectId
 
   @Prop({ required: true })
   amount!: number

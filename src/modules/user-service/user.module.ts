@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
+import { Appointment, AppointmentSchema } from '../appointments_service/schemas/appointment.schema'
 import { AuthModule } from '../auth/auth.module'
 import {
   DoctorLevel,
@@ -29,6 +30,7 @@ import { UsersService } from './user.service'
       { name: Specialty.name, schema: SpecialtySchema },
       { name: Hospital.name, schema: HospitalSchema },
       { name: DoctorLevel.name, schema: DoctorLevelSchema },
+      { name: Appointment.name, schema: AppointmentSchema },
     ]),
     forwardRef(() => AuthModule),
     MailModule,

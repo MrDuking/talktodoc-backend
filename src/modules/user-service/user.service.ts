@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import mongoose, { FilterQuery, Model } from 'mongoose'
+import {
+  Appointment,
+  AppointmentDocument,
+} from '../appointments_service/schemas/appointment.schema'
 import { MailService } from '../mail/mail.service'
 import {
   CreateDoctorDto,
@@ -31,6 +35,7 @@ export class UsersService {
     @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
     @InjectModel(Doctor.name) private doctorModel: Model<DoctorDocument>,
     @InjectModel(Patient.name) private patientModel: Model<PatientDocument>,
+    @InjectModel(Appointment.name) private appointmentModel: Model<AppointmentDocument>,
     private readonly mailService: MailService,
   ) {}
 
@@ -250,7 +255,14 @@ export class UsersService {
     )
   }
 
-  async submitDoctorRating(id: string, dto: SubmitRatingDto) {
+  async submitDoctorRating(
+    id: string,
+    dto: SubmitRatingDto,
+  ): Promise<{
+    message: string
+    avgScore: number
+    totalRatings: number
+  }> {
     if (
       !mongoose.Types.ObjectId.isValid(id) ||
       !mongoose.Types.ObjectId.isValid(dto.appointmentId)
@@ -279,6 +291,17 @@ export class UsersService {
     doctor.avgScore = Math.round((total / doctor.ratingDetails.length) * 10) / 10
 
     await doctor.save()
+
+    await this.appointmentModel.findByIdAndUpdate(dto.appointmentId, {
+      $set: {
+        rating: {
+          ratingScore: dto.ratingScore,
+          description: dto.description,
+          ratedAt: new Date(),
+          ratedBy: dto.patientId,
+        },
+      },
+    })
 
     return {
       message: 'Đánh giá đã được ghi nhận',

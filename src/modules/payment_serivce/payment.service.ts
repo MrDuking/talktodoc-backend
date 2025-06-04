@@ -347,7 +347,10 @@ export class PaymentService {
       const patients = await this.usersService.findManyPatientsByIds(patientIds)
 
       // Lấy appointments với populate doctor
-      const appointmentIds = orders.map(order => order.appointmentId).filter(Boolean) as string[]
+      const appointmentIds = orders
+        .map(order => order.appointmentId)
+        .filter(Boolean)
+        .map(id => id?.toString() || '')
       const appointments = await this.appointmentService.findManyAppointmentsByIds(
         appointmentIds,
         true,
