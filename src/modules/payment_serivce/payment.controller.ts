@@ -9,6 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common'
+import { PaySalaryDto } from './dto/pay-salary.dto'
 import { PaymentCallbackDto } from './dto/payment-callback.dto'
 import { PaymentRequestDto } from './dto/payment-request.dto'
 import { PaymentService } from './payment.service'
@@ -80,6 +81,35 @@ export class PaymentController {
     } catch (error) {
       this.logger.error('Failed to get all orders', error)
       throw new HttpException('Failed to fetch all orders', HttpStatus.INTERNAL_SERVER_ERROR)
+    }
+  }
+
+  @Get('all-orders/doctor')
+  async getAllOrdersByDoctor(
+    @Query('doctor') doctor?: string,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('q') q?: string,
+  ): Promise<any[]> {
+    try {
+      const orders = await this.paymentService.getAllOrders({ doctor, start, end, q })
+      return orders
+    } catch (error) {
+      this.logger.error('Failed to get all orders by doctor', error)
+      throw new HttpException(
+        'Failed to fetch all orders by doctor',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      )
+    }
+  }
+
+  @Post('pay-salary')
+  async paySalary(@Body() dto: PaySalaryDto): Promise<any> {
+    try {
+      return await this.paymentService.paySalary(dto)
+    } catch (error) {
+      this.logger.error('Failed to pay salary', error)
+      throw new HttpException('Failed to pay salary', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 }

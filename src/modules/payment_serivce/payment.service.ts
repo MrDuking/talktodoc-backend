@@ -3,10 +3,11 @@ import { ConfigService } from '@nestjs/config'
 import { InjectModel } from '@nestjs/mongoose'
 import * as crypto from 'crypto'
 import moment from 'moment'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import * as querystring from 'qs'
 import { AppointmentService } from '../appointments_service/appointment.service'
 import { UsersService } from '../user-service/user.service'
+import { PaySalaryDto } from './dto/pay-salary.dto'
 import { PaymentCallbackDto } from './dto/payment-callback.dto'
 import { PaymentRequestDto } from './dto/payment-request.dto'
 import {
@@ -15,6 +16,13 @@ import {
   VnpayParams,
 } from './interfaces/payment.interface'
 import { OrderMapping } from './schemas/order-mapping.schema'
+
+// Định nghĩa type cho appointment đã populate
+interface AppointmentPopulated {
+  doctor: string | Types.ObjectId
+  // ... các trường khác nếu cần
+}
+
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name)
@@ -330,7 +338,6 @@ export class PaymentService {
         const q = filter.q.trim()
         const regex = { $regex: q, $options: 'i' }
         const or: Record<string, unknown>[] = [{ orderId: regex }]
-        // Nếu q là ObjectId hợp lệ, thêm vào filter patient/appointmentId
         const isObjectId = /^[a-f\d]{24}$/i.test(q)
         if (isObjectId) {
           or.push({ patient: q })
@@ -391,6 +398,7 @@ export class PaymentService {
         const q = filter.q.toLowerCase()
         filteredOrders = filteredOrders.filter(
           order =>
+            order.orderId?.toLowerCase().includes(q) ||
             order.userInfo?.fullName?.toLowerCase().includes(q) ||
             order.appointmentInfo?.doctor?.fullName?.toLowerCase().includes(q),
         )
@@ -432,5 +440,86 @@ export class PaymentService {
       if (!existing) isUnique = true
     }
     return orderId
+  }
+
+  async paySalary(dto: PaySalaryDto): Promise<{
+    message: string
+    status: number
+    data: { updated: number; orders: { _id: string; salaryStatus: boolean }[] }
+  }> {
+    const { doctorIds, orderIds, startDate, endDate } = dto
+    this.logger.log('[paySalary] dto:', dto)
+    // Validate doctor
+    for (const doctorId of doctorIds) {
+      await this.usersService.getDoctorById(doctorId)
+    }
+    this.logger.log('[paySalary] doctorIds:', doctorIds)
+    this.logger.log('[paySalary] orderIds:', orderIds)
+    // Lấy orders hợp lệ, populate appointmentId
+    const orders = await this.orderMappingModel
+      .find({
+        _id: { $in: orderIds.map(id => new Types.ObjectId(id)) },
+        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+        status: 'completed',
+        $or: [{ salaryStatus: { $exists: false } }, { salaryStatus: false }],
+      })
+      .populate('appointmentId')
+      .lean()
+    this.logger.log('[paySalary] orders:', orders)
+    if (!orders.length) {
+      return {
+        message: 'Không tìm thấy order hợp lệ để thanh toán lương',
+        status: 404,
+        data: { updated: 0, orders: [] },
+      }
+    }
+    // Tổng hợp số tiền cần trừ cho từng bác sĩ
+    const doctorSalaryMap: Record<string, number> = {}
+    for (const order of orders) {
+      const appointment = order.appointmentId as unknown as AppointmentPopulated
+      if (!appointment || typeof appointment !== 'object' || !('doctor' in appointment)) continue
+      const docId = String(appointment.doctor)
+      if (!doctorIds.includes(docId)) continue
+      doctorSalaryMap[docId] = (doctorSalaryMap[docId] || 0) + order.amount
+    }
+    // Cập nhật salaryStatus cho order
+    const updatedOrders: { _id: string; salaryStatus: boolean }[] = []
+    for (const order of orders) {
+      const appointment = order.appointmentId as unknown as AppointmentPopulated
+      if (!appointment || typeof appointment !== 'object' || !('doctor' in appointment)) continue
+      const docId = String(appointment.doctor)
+      if (!doctorIds.includes(docId)) continue
+      await this.orderMappingModel.updateOne({ _id: order._id }, { $set: { salaryStatus: true } })
+      updatedOrders.push({ _id: order._id.toString(), salaryStatus: true })
+    }
+    // Trừ tiền ví bác sĩ và lưu lịch sử
+    for (const doctorId of Object.keys(doctorSalaryMap)) {
+      const amount = doctorSalaryMap[doctorId]
+      await this.usersService.updateWalletBalance(
+        doctorId,
+        amount,
+        'WITHDRAW',
+        `Thanh toán lương cho các order: ${orders
+          .filter(o => {
+            const appointment = o.appointmentId as unknown as AppointmentPopulated
+            return (
+              appointment &&
+              typeof appointment === 'object' &&
+              'doctor' in appointment &&
+              String(appointment.doctor) === doctorId
+            )
+          })
+          .map(o => o._id)
+          .join(', ')}`,
+      )
+    }
+    return {
+      message: 'Thanh toán lương thành công',
+      status: 200,
+      data: {
+        updated: updatedOrders.length,
+        orders: updatedOrders,
+      },
+    }
   }
 }

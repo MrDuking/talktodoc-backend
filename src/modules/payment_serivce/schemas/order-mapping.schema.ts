@@ -32,6 +32,9 @@ export class OrderMapping extends Document {
 
   @Prop()
   completedAt?: Date
+
+  @Prop({ type: Boolean, default: false })
+  salaryStatus?: boolean
 }
 
 export const OrderMappingSchema = SchemaFactory.createForClass(OrderMapping)
