@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common'
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common'
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import {
   AppointmentBySpecialtyRangeResponseDto,
   AppointmentBySpecialtyRequestDto,
@@ -132,5 +132,59 @@ export class ReportController {
   }> {
     const data = await this.reportService.appointmentBySpecialty(dto)
     return { message: 'Success', data, status: 200 }
+  }
+
+  @Get('review-doctor')
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo tên bác sĩ',
+  })
+  @ApiQuery({
+    name: 'doctorId',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo mã bác sĩ',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Trang hiện tại (mặc định 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Số lượng mỗi trang (mặc định 20)',
+  })
+  async getReviewDoctorStats(
+    @Query('name') name?: string,
+    @Query('doctorId') doctorId?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ): Promise<{
+    message: string
+    data: {
+      items: {
+        doctorId: string
+        name: string
+        avgRating: number
+        reviewCount: number
+        reviewDetails: { ratingScore: number; description: string; appointmentId?: string }[]
+      }[]
+      page: number
+      pageSize: number
+      total: number
+    }
+    status: number
+  }> {
+    const data = await this.reportService.getDoctorReviewStats({ name, doctorId, page, pageSize })
+    return {
+      message: 'Lấy danh sách thống kê đánh giá bác sĩ thành công',
+      status: 200,
+      data,
+    }
   }
 }

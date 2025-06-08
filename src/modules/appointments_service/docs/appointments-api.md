@@ -2,14 +2,104 @@
 
 ## Tổng quan
 
-Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhân và bác sĩ, bao gồm tạo, lấy danh sách, chi tiết, cập nhật, xác nhận, từ chối và xoá lịch hẹn.
+Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhân và bác sĩ, bao gồm tạo, lấy danh sách, chi tiết, cập nhật, xác nhận, từ chối, hoàn thành và xoá lịch hẹn. Hỗ trợ thanh toán qua ví điện tử hoặc VNPAY, đồng bộ trạng thái với Case, gửi email thông báo tự động.
 
 ---
 
-## 1. Tạo mới lịch hẹn (HỖ TRỢ THANH TOÁN BẰNG VÍ)
+## 1. Định nghĩa dữ liệu (Appointment Object)
+
+### Mẫu dữ liệu trả về (chuẩn hóa)
+
+```json
+{
+  "_id": "664b1e2f2f8b2c001e7e7e80",
+  "appointmentId": "AP123456",
+  "patient": {
+    "_id": "664b1e2f2f8b2c001e7e7e7d",
+    "fullName": "Nguyễn Văn A",
+    "email": "a@gmail.com"
+  },
+  "doctor": {
+    "_id": "664b1e2f2f8b2c001e7e7e81",
+    "fullName": "BS. Trần Thị B",
+    "email": "b@gmail.com",
+    "specialty": {
+      "_id": "664b1e2f2f8b2c001e7e7e7f",
+      "name": "Nội tổng quát"
+    }
+  },
+  "specialty": {
+    "_id": "664b1e2f2f8b2c001e7e7e7f",
+    "name": "Nội tổng quát"
+  },
+  "date": "2024-05-20",
+  "slot": "08:00-09:00",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "status": "PENDING",
+  "medicalForm": {
+    /* ... */
+  },
+  "payment": {
+    "platformFee": 50000,
+    "doctorFee": 250000,
+    "discount": 0,
+    "total": 300000,
+    "status": "PAID",
+    "paymentMethod": "WALLET"
+  },
+  "notes": "Bệnh nhân đã được tư vấn về chế độ ăn uống và thuốc",
+  "reason": "Bệnh nhân bận đột xuất",
+  "confirmedAt": "2024-05-20T07:00:00.000Z",
+  "cancelledAt": "2024-05-20T08:00:00.000Z",
+  "completedAt": "2024-05-20T09:15:30.000Z",
+  "duration_call": "00:15:30",
+  "createdAt": "2024-05-19T10:00:00.000Z",
+  "updatedAt": "2024-05-20T09:15:30.000Z",
+  "booking": {
+    "date": "2024-05-20",
+    "slot": "08:00-09:00",
+    "timezone": "Asia/Ho_Chi_Minh"
+  }
+}
+```
+
+### Giải thích các trường
+
+- `_id`: ObjectId của lịch hẹn (MongoDB)
+- `appointmentId`: Mã lịch hẹn định danh (dạng APxxxxxx)
+- `patient`: Thông tin bệnh nhân (id, tên, email)
+- `doctor`: Thông tin bác sĩ (id, tên, email, chuyên khoa)
+- `specialty`: Chuyên khoa khám
+- `date`: Ngày khám (YYYY-MM-DD)
+- `slot`: Khung giờ khám (ví dụ: 08:00-09:00)
+- `timezone`: Múi giờ (mặc định Asia/Ho_Chi_Minh)
+- `status`: Trạng thái lịch hẹn (`PENDING`, `CONFIRMED`, `CANCELLED`, `REJECTED`, `COMPLETED`)
+- `medicalForm`: Thông tin triệu chứng, khai báo y tế (object, optional)
+- `payment`: Thông tin thanh toán (chi tiết bên dưới)
+- `notes`: Ghi chú của bác sĩ hoặc bệnh nhân (optional)
+- `reason`: Lý do hủy lịch hẹn (nếu có)
+- `confirmedAt`, `cancelledAt`, `completedAt`: Thời điểm xác nhận, hủy, hoàn thành
+- `duration_call`: Thời lượng cuộc gọi (nếu có)
+- `createdAt`, `updatedAt`: Thời điểm tạo/cập nhật
+- `booking`: Thông tin đặt lịch (date, slot, timezone)
+
+#### Trường payment
+
+- `platformFee`: Phí nền tảng
+- `doctorFee`: Phí bác sĩ
+- `discount`: Giảm giá
+- `total`: Tổng tiền thanh toán
+- `status`: Trạng thái thanh toán (`PAID`, `UNPAID`)
+- `paymentMethod`: Phương thức thanh toán (`WALLET`, `VNPAY`)
+
+---
+
+## 2. API chi tiết
+
+### 2.1. Tạo mới lịch hẹn
 
 - **Endpoint:** `POST /appointments`
-- **Yêu cầu xác thực:** Bearer Token (bệnh nhân)
+- **Yêu cầu:** Bearer Token (role: PATIENT)
 - **Request Body:**
 
 ```json
@@ -20,9 +110,9 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
   "date": "YYYY-MM-DD",
   "slot": "string (ví dụ: 09:00-09:30)",
   "timezone": "Asia/Ho_Chi_Minh",
-  "paymentMethod": "WALLET | VNPAY", // BẮT BUỘC nếu dùng ví
+  "paymentMethod": "WALLET | VNPAY",
   "payment": {
-    "total": 300000, // BẮT BUỘC nếu dùng ví
+    "total": 300000,
     "platformFee": 50000,
     "doctorFee": 250000,
     "discount": 0
@@ -30,137 +120,81 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
 }
 ```
 
-### Hướng dẫn FE:
+#### Lưu ý:
 
-- Nếu user chọn thanh toán bằng ví (`paymentMethod: 'WALLET'`):
-  - **BẮT BUỘC** truyền đủ trường `payment.total` (và các trường phí nếu có).
-  - FE nên kiểm tra số dư ví trước khi gọi API (nếu có thể), hoặc handle lỗi trả về từ BE.
-- Nếu chọn `paymentMethod: 'VNPAY'`, giữ nguyên flow cũ.
+- Nếu chọn `paymentMethod: 'WALLET'`, **bắt buộc** truyền đủ trường `payment.total`.
+- Nếu chọn `VNPAY`, BE sẽ trả về trạng thái `UNPAID`, FE redirect sang cổng thanh toán.
 
-### Quy trình BE khi thanh toán bằng ví:
-
-1. Kiểm tra số dư ví bệnh nhân.
-2. Nếu đủ tiền, tự động trừ tiền và tạo giao dịch.
-3. Nếu không đủ tiền, trả về lỗi 400.
-4. Trả về appointment với payment.status = 'PAID', paymentMethod = 'WALLET'.
-
-- **Response (thanh toán ví thành công):**
+- **Response mẫu:**
 
 ```json
 {
-  "_id": "string",
-  "appointmentId": "string",
-  "patient": "string",
-  "doctor": "string",
-  "specialty": "string",
-  "date": "YYYY-MM-DD",
-  "slot": "string",
-  "timezone": "string",
-  "status": "PENDING",
-  "payment": {
-    "platformFee": 50000,
-    "doctorFee": 250000,
-    "discount": 0,
-    "total": 300000,
-    "status": "PAID",
-    "paymentMethod": "WALLET"
-  }
+  "message": "Tạo lịch hẹn thành công",
+  "data": { ...Appointment Object... },
+  "status": 201
 }
 ```
 
-#### Giải thích các field:
+#### Giải thích:
 
-- `paymentMethod`: Phương thức thanh toán, FE truyền lên là 'WALLET' hoặc 'VNPAY'.
-- `payment.status`: 'PAID' nếu đã trừ tiền ví thành công, 'UNPAID' nếu chờ thanh toán qua VNPAY.
-- `total`: Số tiền đã trừ khỏi ví (nếu dùng ví).
-
-#### Lỗi thường gặp FE cần handle:
-
-- 400: Thiếu trường bắt buộc, dữ liệu không hợp lệ, **hoặc số dư ví không đủ**.
-- 403: Không có quyền tạo lịch hẹn cho case này.
-- 404: Không tìm thấy bệnh án.
-
-#### Hướng dẫn xử lý trên FE:
-
-- Nếu BE trả về lỗi số dư không đủ, hiển thị thông báo cho user.
-- Nếu thành công, lịch hẹn sẽ có trạng thái payment là `PAID` và paymentMethod là `WALLET`.
-- Nếu chọn VNPAY, FE thực hiện redirect sang cổng thanh toán như cũ.
+- Nếu thanh toán ví thành công, `payment.status = 'PAID'`, `paymentMethod = 'WALLET'`.
+- Nếu không đủ tiền ví, trả về lỗi 400: "Số dư ví không đủ để thanh toán".
 
 ---
 
-## 2. Lấy danh sách lịch hẹn
+### 2.2. Lấy danh sách lịch hẹn
 
 - **Endpoint:** `GET /appointments`
-- **Yêu cầu xác thực:** Bearer Token
+- **Yêu cầu:** Bearer Token
 - **Query Params:**
+
   - `q`: Từ khoá tìm kiếm (id, ngày, trạng thái)
   - `page`: Trang (mặc định 1)
   - `limit`: Số lượng/trang (mặc định 10)
-- **Response:**
+
+- **Response mẫu:**
 
 ```json
 {
-  "total": 2,
-  "page": 1,
-  "limit": 10,
-  "data": [
-    {
-      "_id": "string",
-      "appointmentId": "string",
-      "patient": { "_id": "string", "fullName": "string" },
-      "doctor": { "_id": "string", "fullName": "string", "specialty": { "_id": "string", "name": "string" } },
-      "specialty": { "_id": "string", "name": "string" },
-      "date": "YYYY-MM-DD",
-      "slot": "string",
-      "timezone": "string",
-      "status": "PENDING | CONFIRMED | REJECTED | CANCELLED",
-      "medicalForm": { ... },
-      "payment": { ... },
-      "notes": "string"
-    }
-  ]
+  "message": "Lấy danh sách lịch hẹn thành công",
+  "data": {
+    "items": [ ...Appointment Object... ],
+    "page": 1,
+    "limit": 10,
+    "total": 2
+  },
+  "status": 200
 }
 ```
 
+#### Giải thích:
+
+- `items`: Danh sách lịch hẹn
+- `page`, `limit`, `total`: Phân trang
+
 ---
 
-## 3. Xem chi tiết lịch hẹn
+### 2.3. Xem chi tiết lịch hẹn
 
 - **Endpoint:** `GET /appointments/:id`
-- **Yêu cầu xác thực:** Bearer Token
-- **Response:**
+- **Yêu cầu:** Bearer Token
+
+- **Response mẫu:**
 
 ```json
 {
-  "_id": "string",
-  "appointmentId": "string",
-  "patient": { "_id": "string", "fullName": "string" },
-  "doctor": { "_id": "string", "fullName": "string", "specialty": { "_id": "string", "name": "string" } },
-  "specialty": { "_id": "string", "name": "string" },
-  "date": "YYYY-MM-DD",
-  "slot": "string",
-  "timezone": "string",
-  "status": "PENDING | CONFIRMED | REJECTED | CANCELLED",
-  "medicalForm": { ... },
-  "payment": { ... },
-  "notes": "string",
-  "booking": {
-    "date": "YYYY-MM-DD",
-    "slot": "string",
-    "timezone": "string"
-  }
+  "message": "Lấy chi tiết lịch hẹn thành công",
+  "data": { ...Appointment Object... },
+  "status": 200
 }
 ```
 
-- **Lỗi thường gặp:**
-  - 404: Không tìm thấy lịch hẹn.
-
 ---
 
-## 4. Cập nhật lịch hẹn
+### 2.4. Cập nhật lịch hẹn
 
 - **Endpoint:** `PATCH /appointments/:id`
-- **Yêu cầu xác thực:** Bearer Token
+- **Yêu cầu:** Bearer Token
 - **Request Body:**
 
 ```json
@@ -170,107 +204,149 @@ Module này cung cấp các API để quản lý lịch hẹn giữa bệnh nhâ
   "slot": "string (optional)",
   "medicalForm": { ... },
   "payment": { ... },
-  "notes": "string (optional)"
+  "notes": "string (optional)",
+  "status": "COMPLETED | CANCELLED | ...",
+  "duration_call": "00:15:30"
 }
 ```
 
-- **Response:**
+- **Response mẫu:**
 
 ```json
 {
-  "_id": "string",
-  ... // các trường lịch hẹn sau cập nhật
+  "message": "Lịch hẹn đã được cập nhật",
+  "data": { ...Appointment Object... },
+  "status": 200
 }
 ```
 
-- **Lỗi thường gặp:**
-  - 404: Không tìm thấy lịch hẹn.
+#### Lưu ý:
+
+- Nếu cập nhật `status: COMPLETED`, hệ thống sẽ tự động set `completedAt`, cộng tiền cho bác sĩ nếu đã thanh toán, cập nhật trạng thái case liên kết.
+- Nếu cập nhật `status: CANCELLED`, sẽ hoàn tiền cho bệnh nhân nếu đã thanh toán, gửi email thông báo, trừ điểm bác sĩ nếu có.
 
 ---
 
-## 5. Xoá lịch hẹn
+### 2.5. Xóa lịch hẹn
 
 - **Endpoint:** `DELETE /appointments/:id`
-- **Yêu cầu xác thực:** Bearer Token (admin)
-- **Response:**
+- **Yêu cầu:** Bearer Token (role: ADMIN)
+
+- **Response mẫu:**
 
 ```json
-{ "message": "Lịch hẹn đã được xóa" }
+{
+  "message": "Lịch hẹn đã được xóa",
+  "status": 200
+}
 ```
-
-- **Lỗi thường gặp:**
-  - 404: Không tìm thấy lịch hẹn.
 
 ---
 
-## 6. Bác sĩ xác nhận lịch hẹn
+### 2.6. Bác sĩ xác nhận lịch hẹn
 
 - **Endpoint:** `PATCH /appointments/:id/confirm`
-- **Yêu cầu xác thực:** Bearer Token, role `DOCTOR`
+- **Yêu cầu:** Bearer Token (role: DOCTOR)
 - **Request Body:**
 
 ```json
 { "note": "string (optional)" }
 ```
 
-- **Response:**
+- **Response mẫu:**
 
 ```json
-{ "message": "Lịch hẹn đã được xác nhận và email đã được gửi." }
+{
+  "message": "Lịch hẹn đã được xác nhận và email đã được gửi.",
+  "status": 200
+}
 ```
-
-- **Lỗi thường gặp:**
-  - 400: Lịch hẹn không ở trạng thái chờ.
-  - 403: Không phải bác sĩ được giao.
-  - 404: Không tìm thấy lịch hẹn.
 
 ---
 
-## 7. Bác sĩ từ chối lịch hẹn
+### 2.7. Bác sĩ từ chối lịch hẹn
 
 - **Endpoint:** `PATCH /appointments/:id/reject`
-- **Yêu cầu xác thực:** Bearer Token, role `DOCTOR`
+- **Yêu cầu:** Bearer Token (role: DOCTOR)
 - **Request Body:**
 
 ```json
 { "reason": "string" }
 ```
 
-- **Response:**
+- **Response mẫu:**
 
 ```json
-{ "message": "Lịch hẹn đã được từ chối và email đã được gửi." }
-```
-
-- **Lỗi thường gặp:**
-  - 400: Lịch hẹn không ở trạng thái chờ.
-  - 403: Không phải bác sĩ được giao.
-  - 404: Không tìm thấy lịch hẹn.
-
----
-
-## 8. Migrate status (dev tool)
-
-- **Endpoint:** `GET /appointments/migrate-specialty`
-- **Yêu cầu xác thực:** Bearer Token
-- **Response:**
-
-```json
-{ "message": "Đã migrate status thành công." }
+{
+  "message": "Lịch hẹn đã được từ chối và email đã được gửi.",
+  "status": 200
+}
 ```
 
 ---
 
-## 9. Lưu ý
+### 2.8. Lấy lịch hẹn của bác sĩ (lọc nâng cao)
 
-- Tất cả endpoint đều yêu cầu xác thực JWT.
-- Trạng thái hợp lệ: `PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`.
-- Chỉ bác sĩ được giao mới có quyền xác nhận/từ chối lịch hẹn.
-- Dữ liệu liên quan đến payment, medicalForm, notes là optional.
+- **Endpoint:** `GET /appointments/doctor/:doctorId`
+- **Query Params:**
+
+  - `status`: Lọc theo trạng thái
+  - `date`: Lọc theo ngày (YYYY-MM-DD)
+  - `from_date`, `to_date`: Lọc theo khoảng ngày
+  - `page`, `limit`: Phân trang
+
+- **Response mẫu:**
+
+```json
+{
+  "message": "Lấy danh sách lịch hẹn của bác sĩ thành công",
+  "data": {
+    "items": [ ...Appointment Object... ],
+    "page": 1,
+    "limit": 10,
+    "total": 2
+  },
+  "status": 200
+}
+```
 
 ---
 
-## 10. Liên hệ
+## 3. Quy tắc nghiệp vụ & lưu ý cho FE
 
-- Backend: [Tên, email]
-- Frontend: [Tên, email]
+- **Trạng thái hợp lệ:** `PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`, `COMPLETED`
+- **Chỉ bác sĩ được giao mới có quyền xác nhận/từ chối lịch hẹn.**
+- **Bệnh nhân chỉ được tạo lịch hẹn cho case của mình.**
+- **Khi appointment hoàn thành, case liên kết có thể chuyển sang trạng thái completed (gọi API riêng).**
+- **Nếu appointment bị hủy hoặc từ chối, hệ thống sẽ hoàn tiền tự động nếu đã thanh toán.**
+- **Mọi response đều chuẩn hóa `{ message, data, status }`.**
+- **Nếu trả về list, luôn có `items`, `page`, `limit`, `total`.**
+- **Nếu có field nào FE không dùng hoặc chỉ BE dùng, sẽ note rõ trong docs.**
+
+---
+
+## 4. Lỗi thường gặp & hướng dẫn xử lý
+
+- **400:** Thiếu trường bắt buộc, dữ liệu không hợp lệ, số dư ví không đủ
+- **403:** Không có quyền thao tác
+- **404:** Không tìm thấy lịch hẹn/case
+- **409:** Trùng lịch hẹn (bác sĩ đã có lịch vào khung giờ đó)
+
+---
+
+## 5. Quy trình cập nhật docs
+
+- **Mọi thay đổi response phải update lại docs trước khi merge.**
+- **Nếu field nào sẽ bị FE ignore hoặc chỉ cho BE xài thì cũng phải note rõ.**
+- **Mỗi endpoint đều có ví dụ JSON + giải thích field.**
+
+---
+
+## 6. Liên hệ
+
+- **Backend:** [Tên, email]
+- **Frontend:** [Tên, email]
+
+---
+
+**FE cần góp ý, phản hồi về flow hoặc đề xuất thay đổi logic, vui lòng comment trực tiếp vào docs này hoặc liên hệ backend.**

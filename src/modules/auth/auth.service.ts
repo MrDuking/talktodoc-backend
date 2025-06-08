@@ -89,16 +89,17 @@ export class AuthService {
     return null
   }
 
-  async login(loginDto: LoginDto) {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ accessToken: string; stringeeAccessToken: string; userProfile: unknown }> {
     const user = await this.validateUser(loginDto.identifier, loginDto.password)
     const payload = { username: user.username, sub: user._id, role: user.role }
-    console.log('payload', payload)
-    console.log('user', user)
-    const appAccessToken = this.jwtService.sign(payload) // Token login app
-    const stringeeAccessToken = this.stringeeService.generateClientAccessToken(user._id.toString()) // Token login stringee
+    const appAccessToken = this.jwtService.sign(payload)
+    const stringeeAccessToken = this.stringeeService.generateClientAccessToken(user._id.toString())
+    // Trả về userProfile là object user đã validate (không lấy lại từ DB)
     return {
       accessToken: appAccessToken,
-      stringeeAccessToken: stringeeAccessToken, // <-- Thêm vào response
+      stringeeAccessToken: stringeeAccessToken,
       userProfile: user,
     }
   }
@@ -199,20 +200,5 @@ export class AuthService {
     if (patient) return { ...patient, role: 'PATIENT' }
 
     return null
-  }
-
-  handleRoleBasedAction(user: any) {
-    switch (user.role) {
-      case 'ADMIN':
-        break
-      case 'DOCTOR':
-        break
-      case 'EMPLOYEE':
-        break
-      case 'PATIENT':
-        break
-      default:
-        throw new UnauthorizedException('Invalid role')
-    }
   }
 }

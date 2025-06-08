@@ -98,15 +98,16 @@ function getDoctorIdString(doctor: Types.ObjectId | string): string {
 }
 
 // Helper gửi email có retry khi bị rate limit
-async function sendMailWithRetry(sendFn: () => Promise<any>, maxDelay = 2000) {
+async function sendMailWithRetry(sendFn: () => Promise<unknown>, maxDelay = 2000): Promise<void> {
   let success = false
-  let lastError
+  let lastError: unknown
   while (!success) {
     try {
       await sendFn()
       success = true
-    } catch (err: any) {
-      if (err?.status === 429 || err?.response?.status === 429) {
+    } catch (err: unknown) {
+      const e = err as { status?: number; response?: { status?: number } }
+      if (e?.status === 429 || e?.response?.status === 429) {
         await new Promise(res => setTimeout(res, maxDelay))
       } else {
         lastError = err
@@ -151,14 +152,13 @@ export class AppointmentService {
   ): Promise<{ isAvailable: boolean; existingAppointment: Appointment | null }> {
     try {
       const query = {
-        doctor: doctorId,
+        doctor: new mongoose.Types.ObjectId(doctorId),
         date: date,
         slot: slot,
         status: { $nin: ['CANCELLED', 'REJECTED'] },
       }
       const existingAppointment = await this.appointmentModel.findOne(query)
       this.logger.log('Kết quả kiểm tra:', existingAppointment)
-
       return {
         isAvailable: !existingAppointment,
         existingAppointment: existingAppointment as Appointment | null,
@@ -170,7 +170,7 @@ export class AppointmentService {
   }
 
   async create(createDto: CreateAppointmentDto & { patient: string }): Promise<Appointment> {
-    const { case_id, specialty, doctor, date, slot, timezone, patient, paymentMethod } = createDto
+    const { case_id, specialty, doctor, date, slot, timezone, patient } = createDto
 
     if (!case_id || !doctor || !date || !slot || !specialty) {
       throw new BadRequestException('Vui lòng cung cấp đầy đủ thông tin để đặt lịch hẹn')
@@ -202,65 +202,6 @@ export class AppointmentService {
       timezone: timezone || 'Asia/Ho_Chi_Minh',
       status: 'PENDING',
     })
-
-    // Xử lý thanh toán bằng ví
-    if (paymentMethod === 'WALLET') {
-      const paymentField = (createDto as { payment?: Record<string, unknown> }).payment || {}
-      const platformFee =
-        typeof paymentField.platformFee === 'number' ? paymentField.platformFee : 0
-      const doctorFee = typeof paymentField.doctorFee === 'number' ? paymentField.doctorFee : 0
-      const discount = typeof paymentField.discount === 'number' ? paymentField.discount : 0
-      const total = typeof paymentField.total === 'number' ? paymentField.total : 0
-      if (!total || total <= 0) {
-        throw new BadRequestException('Thiếu thông tin số tiền thanh toán')
-      }
-      // Lấy thông tin bệnh nhân
-      const patientInfo = await this.usersService.getPatientById(patient)
-      if (!patientInfo) throw new NotFoundException('Không tìm thấy bệnh nhân')
-      if (patientInfo.walletBalance < total) {
-        throw new BadRequestException('Số dư ví không đủ để thanh toán')
-      }
-      // Trừ tiền và tạo giao dịch
-      await this.usersService.updateWalletBalance(
-        patient,
-        total,
-        'WITHDRAW',
-        `Thanh toán lịch hẹn ${appointmentId} bằng ví`,
-      )
-      // Cập nhật trạng thái payment
-      appointment.payment = {
-        platformFee,
-        doctorFee,
-        discount,
-        total,
-        status: 'PAID',
-        paymentMethod: 'WALLET',
-      }
-
-      // --- Tạo order mapping cho giao dịch ví ---
-      const orderId = await this.paymentService.generateWalletOrderId()
-      await this.paymentService.storeOrderUserMapping(
-        orderId,
-        patient,
-        total,
-        appointment._id.toString(),
-      )
-    } else if ((createDto as { payment?: Record<string, unknown> }).payment) {
-      const paymentField = (createDto as { payment?: Record<string, unknown> }).payment || {}
-      const platformFee =
-        typeof paymentField.platformFee === 'number' ? paymentField.platformFee : 0
-      const doctorFee = typeof paymentField.doctorFee === 'number' ? paymentField.doctorFee : 0
-      const discount = typeof paymentField.discount === 'number' ? paymentField.discount : 0
-      const total = typeof paymentField.total === 'number' ? paymentField.total : 0
-      appointment.payment = {
-        platformFee,
-        doctorFee,
-        discount,
-        total,
-        status: 'UNPAID',
-        paymentMethod: paymentMethod || 'VNPAY',
-      }
-    }
 
     const savedAppointment = await appointment.save()
 
@@ -363,26 +304,100 @@ export class AppointmentService {
     id: string,
     updateDto: UpdateAppointmentDto,
   ): Promise<{ message: string; data: Appointment }> {
+    this.logger.log('Update appointment:', { id, updateDto })
     const appointment = await this.appointmentModel.findById(id)
-    if (!appointment) throw new NotFoundException('Không tìm thấy lịch hẹn')
+    if (!appointment) {
+      this.logger.warn('Không tìm thấy lịch hẹn với id:', id)
+      throw new NotFoundException('Không tìm thấy lịch hẹn')
+    }
+    this.logger.log('Trước khi merge payment:', appointment.payment)
+    this.logger.log('UpdateDto payment:', updateDto.payment)
     // Nếu có payment, merge từng field vào payment cũ
     if (updateDto.payment) {
       appointment.payment = {
         ...appointment.payment,
         ...updateDto.payment,
+        platformFee: updateDto.payment.platformFee ?? appointment.payment?.platformFee ?? 0,
+        doctorFee: updateDto.payment.doctorFee ?? appointment.payment?.doctorFee ?? 0,
+        discount: updateDto.payment.discount ?? appointment.payment?.discount ?? 0,
+        total: updateDto.payment.total ?? appointment.payment?.total ?? 0,
+        status: 'PAID',
+        paymentMethod:
+          updateDto.payment.paymentMethod ?? appointment.payment?.paymentMethod ?? 'WALLET',
       } as typeof appointment.payment
-      delete updateDto.payment
     }
     if (updateDto.duration_call) {
       appointment.duration_call = updateDto.duration_call
-      delete updateDto.duration_call
+    }
+    this.logger.log('Xử lý payment bằng ví cho appointment:', appointment.appointmentId)
+
+    // Xử lý thanh toán bằng ví khi update (nếu paymentMethod là WALLET, case đang pending, payment chưa PAID)
+    if (updateDto.payment?.paymentMethod === 'WALLET') {
+      // Lấy case liên kết
+      const caseRecord = await this.caseModel.findOne({ appointmentId: appointment._id })
+      console.log('caseRecord', caseRecord)
+      if (caseRecord && caseRecord.status === 'draft') {
+        // Lấy thông tin bệnh nhân
+        this.logger.log('caseRecord:', caseRecord)
+        const patientId = appointment.patient.toString()
+        const total = updateDto.payment.total || appointment.payment?.total || 0
+        if (!total || total <= 0) {
+          throw new BadRequestException('Thiếu thông tin số tiền thanh toán')
+        }
+        const patientInfo = await this.usersService.getPatientById(patientId)
+        this.logger.log('Thông tin bệnh nhân:', {
+          patientId,
+          walletBalance: patientInfo.walletBalance,
+          required: total,
+        })
+
+        if (!patientInfo) throw new NotFoundException('Không tìm thấy bệnh nhân')
+        if (patientInfo.walletBalance < total) {
+          throw new BadRequestException('Số dư ví không đủ để thanh toán')
+        }
+        // Trừ tiền và tạo giao dịch
+        await this.usersService.updateWalletBalance(
+          patientId,
+          total,
+          'WITHDRAW',
+          `Thanh toán lịch hẹn ${appointment.appointmentId} bằng ví`,
+        )
+        this.logger.log(
+          `Đã trừ ${total}đ từ ví bệnh nhân ${patientId} cho appointment ${appointment.appointmentId}`,
+        )
+        // Cập nhật trạng thái payment
+        appointment.payment = {
+          ...appointment.payment,
+          ...updateDto.payment,
+          platformFee: updateDto.payment.platformFee ?? appointment.payment?.platformFee ?? 0,
+          doctorFee: updateDto.payment.doctorFee ?? appointment.payment?.doctorFee ?? 0,
+          discount: updateDto.payment.discount ?? appointment.payment?.discount ?? 0,
+          total: updateDto.payment.total ?? appointment.payment?.total ?? 0,
+          status: 'PAID',
+          paymentMethod: 'WALLET',
+        }
+        // --- Tạo order mapping cho giao dịch ví ---
+        const orderId = await this.paymentService.generateWalletOrderId()
+        this.logger.log('OrderId mapping:', {
+          orderId,
+          patientId,
+          total,
+          appointmentId: appointment._id,
+        })
+        await this.paymentService.storeOrderUserMapping(
+          orderId,
+          patientId,
+          total,
+          appointment._id.toString(),
+        )
+      }
     }
 
+    this.logger.log('Cập nhật trạng thái COMPLETED cho appointment:', appointment.appointmentId)
     // Xử lý hoàn thành lịch hẹn
     if (updateDto.status === 'COMPLETED') {
       appointment.status = 'COMPLETED'
       appointment.completedAt = new Date()
-
       // Cập nhật trạng thái case liên kết thành completed (nếu có)
       await this.caseModel.findOneAndUpdate(
         { appointmentId: appointment._id },
@@ -412,7 +427,6 @@ export class AppointmentService {
     else if (updateDto.status === 'CANCELLED') {
       appointment.status = 'CANCELLED'
       appointment.cancelledAt = new Date()
-
       let decreaseScore = 0
       let reasonLabel = 'Không có lý do'
       if (typeof updateDto.reason === 'object' && updateDto.reason !== null) {
@@ -422,12 +436,10 @@ export class AppointmentService {
         reasonLabel = updateDto.reason || 'Không có lý do'
       }
       appointment.reason = reasonLabel
-
       // Trừ điểm và log nếu có decreaseScore
       if (decreaseScore > 0) {
         const doctorId = getDoctorIdString(appointment.doctor)
         await this.usersService.decreaseDoctorPoint(doctorId, decreaseScore)
-        console.log('appointment._id', appointment)
         await this.usersService.addDoctorPerformanceScoreLog({
           doctorId,
           appointmentId: appointment._id.toString(),
@@ -436,7 +448,6 @@ export class AppointmentService {
           reason: reasonLabel,
         })
       }
-
       // Hoàn tiền vào ví của bệnh nhân nếu đã thanh toán
       if (appointment.payment?.status === 'PAID') {
         const refundAmount = appointment.payment.total
@@ -457,13 +468,11 @@ export class AppointmentService {
           this.logger.error('Lỗi khi hoàn tiền:', error)
         }
       }
-
       // Cập nhật trạng thái case
       await this.caseModel.findOneAndUpdate(
         { appointmentId: appointment._id },
         { $set: { status: 'cancelled' } },
       )
-
       // Gửi email thông báo hủy lịch hẹn
       try {
         const populatedAppointment = (await this.appointmentModel
@@ -472,7 +481,6 @@ export class AppointmentService {
           .populate('doctor')
           .populate('specialty')
           .lean()) as unknown as PopulatedAppointment
-
         // Gửi email cho bệnh nhân
         if (populatedAppointment?.patient?.email) {
           await this.mailService.sendTemplateMail({
@@ -496,7 +504,6 @@ export class AppointmentService {
             },
           })
         }
-
         // Gửi email cho bác sĩ
         if (populatedAppointment?.doctor?.email) {
           await this.mailService.sendTemplateMail({
@@ -526,7 +533,6 @@ export class AppointmentService {
         }
       })
     }
-
     await appointment.save()
     return { message: 'Lịch hẹn đã được cập nhật', data: appointment }
   }

@@ -30,6 +30,13 @@ const APPOINTMENT_STATUS_MAPPING = {
   COMPLETED: 'Đã Hoàn Thành',
 }
 
+interface GetDoctorReviewStatsParams {
+  name?: string
+  doctorId?: string
+  page?: number
+  pageSize?: number
+}
+
 @Injectable()
 export class ReportService {
   constructor(
@@ -529,5 +536,60 @@ export class ReportService {
     }
     // Nếu không truyền gì hợp lệ
     throw new Error('Thiếu tham số thống kê')
+  }
+
+  async getDoctorReviewStats({
+    name,
+    doctorId,
+    page = 1,
+    pageSize = 20,
+  }: GetDoctorReviewStatsParams): Promise<{
+    items: {
+      doctorId: string
+      name: string
+      avgRating: number
+      reviewCount: number
+      avatarUrl: string | null
+      reviewDetails: { ratingScore: number; description: string; appointmentId?: string }[]
+    }[]
+    page: number
+    pageSize: number
+    total: number
+  }> {
+    const filter: Record<string, unknown> = { registrationStatus: 'approved' }
+    if (name) {
+      filter['fullName'] = { $regex: name, $options: 'i' }
+    }
+    if (doctorId) {
+      filter['id'] = doctorId
+    }
+    const skip = (page - 1) * pageSize
+    const total = await this.doctorModel.countDocuments(filter)
+    const doctors = await this.doctorModel
+      .find(filter)
+      .sort({ avgScore: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .lean()
+    const items = doctors.map(doc => ({
+      doctorId: doc.id,
+      name: doc.fullName,
+      avgRating: doc.avgScore || 0,
+      reviewCount: Array.isArray(doc.ratingDetails) ? doc.ratingDetails.length : 0,
+      avatarUrl: doc.avatarUrl || null,
+      reviewDetails: Array.isArray(doc.ratingDetails)
+        ? doc.ratingDetails.map(r => ({
+            ratingScore: r.ratingScore,
+            description: r.description || '',
+            appointmentId: r.appointmentId ? r.appointmentId.toString() : undefined,
+          }))
+        : [],
+    }))
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+    }
   }
 }

@@ -341,10 +341,10 @@ export class UsersService {
     return this.patientModel.find().exec()
   }
 
-  async getPatientById(_id: string): Promise<Patient> {
-    if (!mongoose.Types.ObjectId.isValid(_id))
+  async getPatientById(id: string | mongoose.Types.ObjectId): Promise<Patient> {
+    if (!mongoose.Types.ObjectId.isValid(id))
       throw new BadRequestException('Invalid patient ID format')
-    const patient = await this.patientModel.findById(_id).exec()
+    const patient = await this.patientModel.findById(id).exec()
     if (!patient) throw new NotFoundException('Patient not found')
     return patient
   }

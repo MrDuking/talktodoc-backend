@@ -318,9 +318,6 @@ export class PaymentService {
       const query: Record<string, unknown> = {}
 
       if (filter?.doctor) {
-        // Lấy tất cả order mapping có appointmentId liên kết với doctor này
-        // Sau khi populate appointment, filter lại theo doctor
-        // (Vì OrderMapping không lưu trực tiếp doctorId)
       }
 
       if (filter?.start || filter?.end) {
@@ -358,8 +355,9 @@ export class PaymentService {
 
       const ordersWithAppointmentInfo = orders.map(order => {
         const userInfo = patients.find(p => p._id.toString() === order.patient)
-        const appointmentInfo = appointments.find(a => a._id.toString() === order.appointmentId)
-
+        const appointmentInfo = appointments.find(
+          a => String(a._id) === String(order.appointmentId),
+        )
         // Lấy thông tin bác sĩ từ appointment nếu có
         const doctorInfo = appointmentInfo?.doctor || null
 
@@ -371,12 +369,23 @@ export class PaymentService {
         }
       })
 
+      // Sort lại theo ngày hẹn (appointmentInfo.date) nếu có, nếu không thì theo createdAt
+      const sortedOrders = ordersWithAppointmentInfo.sort((a, b) => {
+        const dateA = a.appointmentInfo?.date
+          ? new Date(a.appointmentInfo.date).getTime()
+          : new Date(a.createdAt).getTime()
+        const dateB = b.appointmentInfo?.date
+          ? new Date(b.appointmentInfo.date).getTime()
+          : new Date(b.createdAt).getTime()
+        return dateB - dateA // Descending
+      })
+
       // Nếu có filter doctor, filter lại theo doctor sau khi populate appointmentInfo
       let filteredOrders = filter?.doctor
-        ? ordersWithAppointmentInfo.filter(
+        ? sortedOrders.filter(
             order => order.appointmentInfo?.doctor?._id?.toString() === filter.doctor,
           )
-        : ordersWithAppointmentInfo
+        : sortedOrders
 
       if (filter?.q) {
         const q = filter.q.toLowerCase()

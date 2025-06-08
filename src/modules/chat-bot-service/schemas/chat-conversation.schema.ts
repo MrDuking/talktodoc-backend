@@ -31,6 +31,9 @@ export class ChatConversation extends Document {
 
   @Prop()
   topic?: string
+
+  @Prop({ type: Object, default: {} })
+  context?: Record<string, unknown>
 }
 
 export const ChatConversationSchema = SchemaFactory.createForClass(ChatConversation)
