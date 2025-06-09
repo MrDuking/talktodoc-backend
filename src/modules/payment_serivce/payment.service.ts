@@ -171,7 +171,7 @@ export class PaymentService {
         patient,
         appointmentId,
         amount,
-        status: 'pending',
+        status: 'completed',
         createdAt: new Date(),
       })
     } catch (error: unknown) {
@@ -456,20 +456,50 @@ export class PaymentService {
     this.logger.log('[paySalary] doctorIds:', doctorIds)
     this.logger.log('[paySalary] orderIds:', orderIds)
     // Lấy orders hợp lệ, populate appointmentId
-    const orders = await this.orderMappingModel
-      .find({
-        _id: { $in: orderIds.map(id => new Types.ObjectId(id)) },
-        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
-        status: 'completed',
-        $or: [{ salaryStatus: { $exists: false } }, { salaryStatus: false }],
-      })
-      .populate('appointmentId')
-      .lean()
+    const query: Record<string, unknown> = {
+      _id: { $in: orderIds.map(id => new Types.ObjectId(id)) },
+      status: 'completed',
+      $or: [{ salaryStatus: { $exists: false } }, { salaryStatus: false }],
+    }
+    if (startDate && endDate) {
+      query.createdAt = { $gte: startDate, $lte: endDate }
+    }
+    const orders = await this.orderMappingModel.find(query).populate('appointmentId').lean()
     this.logger.log('[paySalary] orders:', orders)
     if (!orders.length) {
+      // Kiểm tra chi tiết lý do không có order hợp lệ
+      const allOrders = await this.orderMappingModel
+        .find({
+          _id: { $in: orderIds.map(id => new Types.ObjectId(id)) },
+          ...(startDate && endDate ? { createdAt: { $gte: startDate, $lte: endDate } } : {}),
+        })
+        .lean()
+      if (!allOrders.length) {
+        return {
+          message: 'Không tìm thấy order nào với orderIds và ngày đã chọn',
+          status: 404,
+          data: { updated: 0, orders: [] },
+        }
+      }
+      const notCompleted = allOrders.filter(o => o.status !== 'completed')
+      if (notCompleted.length === allOrders.length) {
+        return {
+          message: 'Tất cả order đều chưa hoàn thành (status != completed)',
+          status: 400,
+          data: { updated: 0, orders: [] },
+        }
+      }
+      const alreadyPaid = allOrders.filter(o => o.salaryStatus === true)
+      if (alreadyPaid.length === allOrders.length) {
+        return {
+          message: 'Tất cả order đã được thanh toán lương trước đó',
+          status: 400,
+          data: { updated: 0, orders: [] },
+        }
+      }
       return {
-        message: 'Không tìm thấy order hợp lệ để thanh toán lương',
-        status: 404,
+        message: 'Không có order nào đủ điều kiện (phải completed và chưa thanh toán lương)',
+        status: 400,
         data: { updated: 0, orders: [] },
       }
     }
