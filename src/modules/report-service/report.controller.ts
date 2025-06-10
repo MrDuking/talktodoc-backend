@@ -13,6 +13,22 @@ import { SummaryAnalystRequestDto, SummaryAnalystResponseDto } from './dtos/summ
 import { TopDoctorItemDto, TopDoctorsRequestDto } from './dtos/top-doctors.dto'
 import { ReportService } from './report.service'
 
+// Định nghĩa type cho response
+export interface DoctorsAppointmentsStatisticsItem {
+  doctor_id: string
+  doctor_name: string
+  total_appointments: number
+  completed_appointments: number
+  cancelled_appointments: number
+  completion_rate: number
+}
+export interface DoctorsAppointmentsStatisticsResponse {
+  items: DoctorsAppointmentsStatisticsItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 @ApiTags('Reports')
 @Controller('report')
 export class ReportController {
@@ -265,6 +281,76 @@ export class ReportController {
     })
     return {
       message: 'Lấy báo cáo chuyên khoa thành công',
+      status: 200,
+      data,
+    }
+  }
+
+  @Get('doctor-appointments')
+  @ApiQuery({
+    name: 'from_date',
+    required: false,
+    type: String,
+    description: 'Ngày bắt đầu lọc (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'to_date',
+    required: false,
+    type: String,
+    description: 'Ngày kết thúc lọc (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'doctor_ids',
+    required: false,
+    type: [String],
+    description: 'Danh sách mã bác sĩ (doctor_ids[]=BS001&doctor_ids[]=BS002)',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Trạng thái: all | completed | cancelled | pending | confirmed',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Tìm kiếm theo tên hoặc mã bác sĩ',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Trang hiện tại (mặc định 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Số dòng/trang (mặc định 20)',
+  })
+  async getDoctorsAppointmentsStatistics(
+    @Query('from_date') fromDate?: string,
+    @Query('to_date') toDate?: string,
+    @Query('doctor_ids') doctorIds?: string[],
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('page') page: string | number = 1,
+    @Query('pageSize') pageSize: string | number = 20,
+  ): Promise<{ message: string; status: number; data: DoctorsAppointmentsStatisticsResponse }> {
+    const pageNum = typeof page === 'string' ? parseInt(page, 10) || 1 : page
+    const pageSizeNum = typeof pageSize === 'string' ? parseInt(pageSize, 10) || 20 : pageSize
+    const data = await this.reportService.getDoctorsAppointmentsStatistics({
+      fromDate,
+      toDate,
+      doctorIds,
+      status,
+      search,
+      page: pageNum,
+      pageSize: pageSizeNum,
+    })
+    return {
+      message: 'Thành công',
       status: 200,
       data,
     }

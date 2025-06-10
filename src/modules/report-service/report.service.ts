@@ -23,6 +23,7 @@ import {
   TypeSummaryEnum,
 } from './dtos/summary-analyst.dto'
 import { TopDoctorItemDto, TopDoctorsRequestDto } from './dtos/top-doctors.dto'
+import { DoctorsAppointmentsStatisticsResponse } from './report.controller'
 
 const APPOINTMENT_STATUS_MAPPING = {
   CONFIRMED: 'Đã Xác Nhận',
@@ -718,6 +719,109 @@ export class ReportService {
       page: params.page,
       pageSize: params.pageSize,
       total,
+    }
+  }
+
+  async getDoctorsAppointmentsStatistics({
+    fromDate,
+    toDate,
+    doctorIds,
+    status,
+    search,
+    page = 1,
+    pageSize = 20,
+  }: {
+    fromDate?: string
+    toDate?: string
+    doctorIds?: string[]
+    status?: string
+    search?: string
+    page?: number
+    pageSize?: number
+  }): Promise<DoctorsAppointmentsStatisticsResponse> {
+    // Build filter
+    const match: any = {}
+    if (fromDate) match.date = { ...match.date, $gte: fromDate }
+    if (toDate) match.date = { ...match.date, $lte: toDate }
+    if (doctorIds && doctorIds.length > 0) match['doctor'] = { $in: doctorIds }
+    if (status && status !== 'all') match.status = status.toUpperCase()
+    // Query appointments, join doctor
+    const pipeline: any[] = [
+      { $match: match },
+      {
+        $lookup: {
+          from: 'doctors',
+          localField: 'doctor',
+          foreignField: '_id',
+          as: 'doctorInfo',
+        },
+      },
+      { $unwind: '$doctorInfo' },
+    ]
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'doctorInfo.fullName': { $regex: search, $options: 'i' } },
+            { 'doctorInfo.id': { $regex: search, $options: 'i' } },
+          ],
+        },
+      })
+    }
+    pipeline.push({
+      $group: {
+        _id: '$doctorInfo.id',
+        doctor_name: { $first: '$doctorInfo.fullName' },
+        total_appointments: { $sum: 1 },
+        completed_appointments: {
+          $sum: { $cond: [{ $eq: ['$status', 'COMPLETED'] }, 1, 0] },
+        },
+        cancelled_appointments: {
+          $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] },
+        },
+      },
+    })
+    pipeline.push({
+      $addFields: {
+        completion_rate: {
+          $cond: [
+            { $eq: ['$total_appointments', 0] },
+            0,
+            {
+              $round: [
+                {
+                  $multiply: [{ $divide: ['$completed_appointments', '$total_appointments'] }, 100],
+                },
+                0,
+              ],
+            },
+          ],
+        },
+      },
+    })
+    // Đếm tổng
+    const countPipeline = [...pipeline, { $count: 'total' }]
+    const countResult = await this.appointmentModel.aggregate(countPipeline)
+    const total = countResult[0]?.total || 0
+    // Phân trang
+    pipeline.push({ $sort: { total_appointments: -1 } })
+    pipeline.push({ $skip: (page - 1) * pageSize })
+    pipeline.push({ $limit: pageSize })
+    // Lấy data
+    const itemsRaw = await this.appointmentModel.aggregate(pipeline)
+    const items = itemsRaw.map(item => ({
+      doctor_id: item._id,
+      doctor_name: item.doctor_name,
+      total_appointments: item.total_appointments,
+      completed_appointments: item.completed_appointments,
+      cancelled_appointments: item.cancelled_appointments,
+      completion_rate: item.completion_rate,
+    }))
+    return {
+      items,
+      total,
+      page,
+      pageSize,
     }
   }
 }
