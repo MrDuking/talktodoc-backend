@@ -448,13 +448,10 @@ export class PaymentService {
     data: { updated: number; orders: { _id: string; salaryStatus: boolean }[] }
   }> {
     const { doctorIds, orderIds, startDate, endDate } = dto
-    this.logger.log('[paySalary] dto:', dto)
     // Validate doctor
     for (const doctorId of doctorIds) {
       await this.usersService.getDoctorById(doctorId)
     }
-    this.logger.log('[paySalary] doctorIds:', doctorIds)
-    this.logger.log('[paySalary] orderIds:', orderIds)
     // Lấy orders hợp lệ, populate appointmentId
     const query: Record<string, unknown> = {
       _id: { $in: orderIds.map(id => new Types.ObjectId(id)) },
@@ -465,7 +462,6 @@ export class PaymentService {
       query.createdAt = { $gte: startDate, $lte: endDate }
     }
     const orders = await this.orderMappingModel.find(query).populate('appointmentId').lean()
-    this.logger.log('[paySalary] orders:', orders)
     if (!orders.length) {
       // Kiểm tra chi tiết lý do không có order hợp lệ
       const allOrders = await this.orderMappingModel
@@ -510,7 +506,7 @@ export class PaymentService {
       if (!appointment || typeof appointment !== 'object' || !('doctor' in appointment)) continue
       const docId = String(appointment.doctor)
       if (!doctorIds.includes(docId)) continue
-      doctorSalaryMap[docId] = (doctorSalaryMap[docId] || 0) + order.amount
+      doctorSalaryMap[docId] = (doctorSalaryMap[docId] || 0) + order.amount * 0.9
     }
     // Cập nhật salaryStatus cho order
     const updatedOrders: { _id: string; salaryStatus: boolean }[] = []

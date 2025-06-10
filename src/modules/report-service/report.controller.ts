@@ -187,4 +187,86 @@ export class ReportController {
       data,
     }
   }
+
+  @Get('specialty-statistics')
+  @ApiOperation({
+    summary: 'Báo cáo chuyên khoa',
+    description:
+      'Trả về danh sách thống kê các chuyên khoa, bao gồm: số lượt khám, doanh thu, số bác sĩ, đánh giá trung bình, phần trăm tăng/giảm so với kỳ trước.',
+  })
+  @ApiQuery({
+    name: 'timeRange',
+    required: true,
+    type: String,
+    description: 'Khoảng thời gian: week, month, quarter, custom',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    description: 'Ngày bắt đầu (YYYY-MM-DD, dùng khi timeRange=custom)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    description: 'Ngày kết thúc (YYYY-MM-DD, dùng khi timeRange=custom)',
+  })
+  @ApiQuery({
+    name: 'specialty',
+    required: false,
+    type: String,
+    description: 'Mã chuyên khoa (lọc theo chuyên khoa, "all" để lấy tất cả)',
+  })
+  @ApiQuery({
+    name: 'hospital',
+    required: false,
+    type: String,
+    description: 'Mã cơ sở y tế (nếu có, "all" để lấy tất cả)',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Trang hiện tại (mặc định 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Số dòng/trang (mặc định 20)',
+  })
+  async getSpecialtyStatistics(
+    @Query('timeRange') timeRange: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('specialty') specialty?: string,
+    @Query('hospital') hospital?: string,
+    @Query('page') page: number = 1,
+    @Query('pageSize') pageSize: number = 20,
+  ): Promise<{
+    message: string
+    data: {
+      items: any[]
+      page: number
+      pageSize: number
+      total: number
+    }
+    status: number
+  }> {
+    const data = await this.reportService.getSpecialtyStatistics({
+      timeRange,
+      startDate,
+      endDate,
+      specialty,
+      hospital,
+      page,
+      pageSize,
+    })
+    return {
+      message: 'Lấy báo cáo chuyên khoa thành công',
+      status: 200,
+      data,
+    }
+  }
 }

@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import moment from 'moment'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { Appointment } from '../appointments_service/schemas/appointment.schema'
 import { OrderMapping } from '../payment_serivce/schemas/order-mapping.schema'
+import { Specialty } from '../specialty_service/schemas/specialty.schema'
 import { Doctor } from '../user-service/schemas/doctor.schema'
 import { Patient } from '../user-service/schemas/patient.schema'
 import {
@@ -37,6 +38,17 @@ interface GetDoctorReviewStatsParams {
   pageSize?: number
 }
 
+type SpecialtyStatisticsItem = {
+  specialty: string
+  specialtyCode: string
+  specialtyIcon: string
+  visits: number
+  revenue: number
+  doctorCount: number
+  avgRating: number
+  percentChange: number
+}
+
 @Injectable()
 export class ReportService {
   constructor(
@@ -44,15 +56,18 @@ export class ReportService {
     @InjectModel(Doctor.name) private doctorModel: Model<Doctor>,
     @InjectModel(Appointment.name) private appointmentModel: Model<Appointment>,
     @InjectModel(OrderMapping.name) private orderMappingModel: Model<OrderMapping>,
+    @InjectModel(Specialty.name) private specialtyModel: Model<Specialty>,
   ) {}
 
   async getSummaryAnalyst(request: SummaryAnalystRequestDto): Promise<SummaryAnalystResponseDto> {
     const { typeSummary, dateRange } = request
 
-    let currentStart: moment.Moment
-    let currentEnd: moment.Moment
-    let previousStart: moment.Moment
-    let previousEnd: moment.Moment
+    let currentStart: import('moment').Moment
+    let currentEnd: import('moment').Moment
+    let previousStart: import('moment').Moment
+    let previousEnd: import('moment').Moment
+
+    const moment = (await import('moment')).default
 
     if (dateRange) {
       // Sử dụng dateRange tùy chỉnh
@@ -76,7 +91,7 @@ export class ReportService {
     }
     let currentTotal = 0
     let previousTotal = 0
-    const seriesData = [0, 0, 0, 0, 0, 0] // 4 phần tử
+    const seriesData = [0, 0, 0, 0] // 4 phần tử
 
     // Chia khoảng thời gian hiện tại thành 4 phần bằng nhau
     const totalDays = currentEnd.diff(currentStart, 'days') + 1
@@ -86,11 +101,11 @@ export class ReportService {
       case TypeSummaryEnum.PATIENT:
         // Thống kê số lượng bệnh nhân đăng ký theo createdAt
         currentTotal = await this.patientModel.countDocuments({
-          // createdAt: {
-          //   // $gte: currentStart.toDate(),
-          // },
+          createdAt: {
+            $gte: currentStart.toDate(),
+            $lte: currentEnd.toDate(),
+          },
         })
-        console.log('currentTotal', currentTotal)
         previousTotal = await this.patientModel.countDocuments({
           createdAt: {
             $gte: previousStart.toDate(),
@@ -99,7 +114,7 @@ export class ReportService {
         })
 
         // Tính theo 4 phân đoạn
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 4; i++) {
           const segmentStart = currentStart.clone().add(i * daysPerSegment, 'days')
           const segmentEnd =
             i === 3
@@ -589,6 +604,119 @@ export class ReportService {
       items,
       page,
       pageSize,
+      total,
+    }
+  }
+
+  async getSpecialtyStatistics(params: {
+    timeRange: string
+    startDate?: string
+    endDate?: string
+    specialty?: string
+    hospital?: string
+    page: number
+    pageSize: number
+  }): Promise<{
+    items: SpecialtyStatisticsItem[]
+    page: number
+    pageSize: number
+    total: number
+  }> {
+    // 1. Xác định khoảng thời gian hiện tại và kỳ trước
+    const moment = (await import('moment')).default
+    let currentStart: import('moment').Moment, currentEnd: import('moment').Moment
+    const now = moment()
+    if (params.timeRange === 'custom' && params.startDate && params.endDate) {
+      currentStart = moment(params.startDate).startOf('day')
+      currentEnd = moment(params.endDate).endOf('day')
+    } else if (params.timeRange === 'week') {
+      currentStart = now.clone().startOf('isoWeek')
+      currentEnd = now.clone().endOf('isoWeek')
+    } else if (params.timeRange === 'month') {
+      currentStart = now.clone().startOf('month')
+      currentEnd = now.clone().endOf('month')
+    } else if (params.timeRange === 'quarter') {
+      currentStart = now.clone().startOf('quarter')
+      currentEnd = now.clone().endOf('quarter')
+    } else {
+      throw new Error('Invalid timeRange')
+    }
+    // Kỳ trước có cùng độ dài
+    const daysDiff = currentEnd.diff(currentStart, 'days') + 1
+    const previousEnd = currentStart.clone().subtract(1, 'day').endOf('day')
+    const previousStart = previousEnd
+      .clone()
+      .subtract(daysDiff - 1, 'days')
+      .startOf('day')
+
+    // 2. Lấy danh sách chuyên khoa
+    const specialtyFilter: Record<string, unknown> = {}
+    if (params.specialty && params.specialty !== 'all') specialtyFilter.id = params.specialty
+    const allSpecialties = await this.specialtyModel.find(specialtyFilter).lean()
+    const specialtyIds = allSpecialties.map(sp => sp._id)
+
+    // 3. Lấy appointment trong kỳ hiện tại và kỳ trước
+    const appointmentFilter: Record<string, unknown> = {
+      specialty: { $in: specialtyIds },
+      date: { $gte: currentStart.format('YYYY-MM-DD'), $lte: currentEnd.format('YYYY-MM-DD') },
+    }
+    if (params.hospital && params.hospital !== 'all') appointmentFilter.hospital = params.hospital
+    const appointments = await this.appointmentModel.find(appointmentFilter).lean()
+    // Kỳ trước
+    const prevAppointmentFilter: Record<string, unknown> = {
+      ...appointmentFilter,
+      date: { $gte: previousStart.format('YYYY-MM-DD'), $lte: previousEnd.format('YYYY-MM-DD') },
+    }
+    const prevAppointments = await this.appointmentModel.find(prevAppointmentFilter).lean()
+
+    // 4. Tổng hợp dữ liệu cho từng specialty
+    const items: SpecialtyStatisticsItem[] = []
+    for (const sp of allSpecialties) {
+      // Lọc appointment của chuyên khoa này
+      const spAppointments = appointments.filter(a => String(a.specialty) === String(sp._id))
+      const prevSpAppointments = prevAppointments.filter(
+        a => String(a.specialty) === String(sp._id),
+      )
+      // visits
+      const visits = spAppointments.length
+      const prevVisits = prevSpAppointments.length
+      // revenue
+      const revenue = spAppointments.reduce((sum, a) => sum + (a.payment?.total || 0), 0)
+      // doctorCount
+      const doctorCount = await this.doctorModel.countDocuments({
+        specialty: new Types.ObjectId(sp._id),
+      })
+      // avgRating
+      const doctors = await this.doctorModel.find({ specialty: new Types.ObjectId(sp._id) }).lean()
+      const avgRating = doctors.length
+        ? doctors.reduce((sum, d) => sum + (d.avgScore || 0), 0) / doctors.length
+        : 0
+      // percentChange
+      let percentChange = 0
+      if (prevVisits > 0) percentChange = ((visits - prevVisits) / prevVisits) * 100
+      else if (visits > 0) percentChange = 100
+      // icon
+      // TODO: FE xác nhận nếu cần mapping icon riêng, hiện lấy avatarUrl
+      items.push({
+        specialty: sp.name,
+        specialtyCode: sp.id,
+        specialtyIcon: sp.avatarUrl || '',
+        visits,
+        revenue,
+        doctorCount,
+        avgRating: Number(avgRating.toFixed(2)),
+        percentChange: Number(percentChange.toFixed(2)),
+      })
+    }
+    // 5. Phân trang
+    const total = items.length
+    const startIdx = (params.page - 1) * params.pageSize
+    const endIdx = startIdx + params.pageSize
+    const pagedItems = items.slice(startIdx, endIdx)
+    return {
+      items: pagedItems,
+      page: params.page,
+      pageSize: params.pageSize,
       total,
     }
   }
