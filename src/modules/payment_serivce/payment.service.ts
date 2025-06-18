@@ -45,7 +45,10 @@ export class PaymentService {
     this.vnp_Url =
       this.configService.get<string>('VNP_URL') ||
       'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'
-    this.urlCallBack ='http://dashboard.talktodoc.online/payment'
+    this.urlCallBack =
+      this.configService.get<string>('VNP_CALLBACK_URL') ||
+      process.env.CALLBACK_URL_VNPAY ||
+      'http://dashboard.talktodoc.online/payment'
   }
 
   async createPaymentUrl(request: PaymentRequestDto): Promise<PaymentUrlResponse> {
