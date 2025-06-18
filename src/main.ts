@@ -11,6 +11,7 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') || 3000
   const mongoUri = configService.get<string>('MONGODB_URI')
   const dbName = configService.get<string>('DB_NAME')
+  console.log('ENV CHECK:', process.env.YOUR_ENV_NAME);
 
   mongoose.connection.on('connected', () => {
     console.log(` Connected to MongoDB: ${mongoUri}/${dbName}`)

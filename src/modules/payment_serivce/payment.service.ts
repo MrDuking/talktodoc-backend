@@ -47,7 +47,6 @@ export class PaymentService {
       'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'
     this.urlCallBack =
       this.configService.get<string>('VNP_CALLBACK_URL') ||
-      process.env.CALLBACK_URL_VNPAY ||
       'http://dashboard.talktodoc.online/payment'
   }
 
