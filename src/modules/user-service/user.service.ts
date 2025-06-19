@@ -99,62 +99,82 @@ export class UsersService {
   }
 
   async createDoctor(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
-    const doctor = new this.doctorModel({
-      ...createDoctorDto,
-      registrationStatus: createDoctorDto.registrationStatus ?? DoctorRegistrationStatus.PENDING,
-      registrationForm: {
-        ...createDoctorDto.registrationForm,
-        submittedAt: new Date(),
-      },
-    })
-
-    const savedDoctor = await doctor.save()
-
-    // Gửi email cho bác sĩ
-    await this.mailService.sendTemplateMail({
-      to: savedDoctor.email,
-      subject: 'Yêu cầu đăng ký bác sĩ của bạn đã được ghi nhận',
-      template: 'doctor-request',
-      variables: {
-        fullName: savedDoctor.fullName,
-        phoneNumber: savedDoctor.phoneNumber,
-        email: savedDoctor.email,
+    try {
+      const doctor = new this.doctorModel({
+        ...createDoctorDto,
+        registrationStatus: createDoctorDto.registrationStatus ?? DoctorRegistrationStatus.PENDING,
         registrationForm: {
-          practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
-          degree: savedDoctor.registrationForm?.degree,
-          cv: savedDoctor.registrationForm?.cv,
-          otherCertificates: savedDoctor.registrationForm?.otherCertificates,
-          submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
+          ...createDoctorDto.registrationForm,
+          submittedAt: new Date(),
         },
-      },
-    })
+      })
 
-    // Gửi email cho tất cả nhân viên admin
-    const employees = await this.employeeModel.find({ isActive: true }).exec()
+      const savedDoctor = await doctor.save()
 
-    await Promise.all(
-      employees.map(emp =>
-        this.mailService.sendTemplateMail({
-          to: emp.email,
-          subject: 'Thông báo: Bác sĩ mới đăng ký',
-          template: 'new-doctor-request',
-          variables: {
-            fullName: savedDoctor.fullName,
-            phoneNumber: savedDoctor.phoneNumber,
-            email: savedDoctor.email,
-            registrationForm: {
-              practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
-              degree: savedDoctor.registrationForm?.degree,
-              cv: savedDoctor.registrationForm?.cv,
-              otherCertificates: savedDoctor.registrationForm?.otherCertificates,
-              submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
-            },
+      // Gửi email cho bác sĩ
+      await this.mailService.sendTemplateMail({
+        to: savedDoctor.email,
+        subject: 'Yêu cầu đăng ký bác sĩ của bạn đã được ghi nhận',
+        template: 'doctor-request',
+        variables: {
+          fullName: savedDoctor.fullName,
+          phoneNumber: savedDoctor.phoneNumber,
+          email: savedDoctor.email,
+          registrationForm: {
+            practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
+            degree: savedDoctor.registrationForm?.degree,
+            cv: savedDoctor.registrationForm?.cv,
+            otherCertificates: savedDoctor.registrationForm?.otherCertificates,
+            submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
           },
-        }),
-      ),
-    )
+        },
+      })
 
-    return savedDoctor
+      // Gửi email cho tất cả nhân viên admin
+      const employees = await this.employeeModel.find({ isActive: true }).exec()
+
+      await Promise.all(
+        employees.map(emp =>
+          this.mailService.sendTemplateMail({
+            to: emp.email,
+            subject: 'Thông báo: Bác sĩ mới đăng ký',
+            template: 'new-doctor-request',
+            variables: {
+              fullName: savedDoctor.fullName,
+              phoneNumber: savedDoctor.phoneNumber,
+              email: savedDoctor.email,
+              registrationForm: {
+                practicingCertificate: savedDoctor.registrationForm?.practicingCertificate,
+                degree: savedDoctor.registrationForm?.degree,
+                cv: savedDoctor.registrationForm?.cv,
+                otherCertificates: savedDoctor.registrationForm?.otherCertificates,
+                submittedAt: savedDoctor.registrationForm?.submittedAt?.toLocaleString(),
+              },
+            },
+          }),
+        ),
+      )
+
+      return savedDoctor
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && (error as any).code === 11000) {
+        // Xác định trường bị duplicate
+        let field = ''
+        const keyPattern = (error as any).keyPattern || {}
+        if (keyPattern.username) field = 'username'
+        else if (keyPattern.email) field = 'email'
+        else if (keyPattern.id) field = 'id'
+        const message = field
+          ? `Tài khoản với ${field} này đã tồn tại, vui lòng chọn giá trị khác.`
+          : 'Tài khoản đã tồn tại, vui lòng kiểm tra lại thông tin.'
+        throw new BadRequestException({
+          message,
+          data: null,
+          status: 400,
+        })
+      }
+      throw error
+    }
   }
 
   async updateDoctor(id: string, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {

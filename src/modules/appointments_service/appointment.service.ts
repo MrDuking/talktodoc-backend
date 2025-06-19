@@ -321,7 +321,7 @@ export class AppointmentService {
         doctorFee: updateDto.payment.doctorFee ?? appointment.payment?.doctorFee ?? 0,
         discount: updateDto.payment.discount ?? appointment.payment?.discount ?? 0,
         total: updateDto.payment.total ?? appointment.payment?.total ?? 0,
-        status: 'PAID',
+        status: updateDto.payment.status ?? appointment.payment?.status ?? 'UNPAID',
         paymentMethod:
           updateDto.payment.paymentMethod ?? appointment.payment?.paymentMethod ?? 'WALLET',
       } as typeof appointment.payment
