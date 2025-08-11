@@ -34,6 +34,7 @@ export class ChatService {
   ) {
     this.openai = new OpenAI({
       apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+      baseURL: 'https://gpt1.shupremium.com/v1',
     })
   }
 
