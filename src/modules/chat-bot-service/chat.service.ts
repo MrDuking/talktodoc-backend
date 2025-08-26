@@ -38,11 +38,19 @@ export class ChatService {
     })
   }
 
+  async switchModel(conversationId: string, model: string): Promise<ChatConversation> {
+    const convo = await this.chatModel.findById(conversationId)
+    if (!convo) throw new NotFoundException('Cuộc hội thoại không tồn tại')
+    convo.model_used = model
+    await convo.save()
+    return convo
+  }
+
   async createConversation(dto: CreateConversationDto): Promise<ChatConversation> {
     const conversation = new this.chatModel({
       user_id: dto.user_id,
       messages: [],
-      model_used: 'gpt-3.5-turbo',
+      model_used: dto.model_used || 'gpt-3.5-turbo',
       context: dto.context || {},
     })
     return conversation.save()
@@ -60,6 +68,13 @@ export class ChatService {
   ): Promise<{ reply: string; messages: ChatMessage[] }> {
     const convo = await this.chatModel.findById(conversationId)
     if (!convo) throw new NotFoundException('Cuộc hội thoại không tồn tại')
+
+    // Allow switching model per message if provided
+    if (dto.model && dto.model !== convo.model_used) {
+      convo.model_used = dto.model
+      await convo.save()
+    }
+    const selectedModel = convo.model_used || 'gpt-3.5-turbo'
 
     // Query patient info & appointments with enhanced doctor and specialty details
     let patientInfo: Patient | null = null
@@ -235,10 +250,11 @@ export class ChatService {
     }
 
     const imageUrlsFromText = []
-    let textContent = dto.message
+    const rawMessage = dto.message ?? ''
+    let textContent = rawMessage
     let match
     const regex = new RegExp(IMAGE_URL_REGEX, 'gi')
-    while ((match = regex.exec(dto.message)) !== null) {
+    while ((match = regex.exec(rawMessage)) !== null) {
       imageUrlsFromText.push(match[0])
       textContent = textContent.replace(match[0], '').trim()
     }
@@ -256,8 +272,9 @@ export class ChatService {
           userContent.push({ type: 'image_url' as const, image_url: { url } })
         })
 
+        // For vision, prefer a vision-capable model. If client explicitly requests a model, use it; otherwise default to gpt-4o
         const visionResponse = await this.openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: dto.model || 'gpt-4o',
           messages: [
             {
               role: 'system',
@@ -291,9 +308,9 @@ export class ChatService {
       return { reply, messages: convo.messages as ChatMessage[] }
     }
 
-    convo.messages.push({ role: 'user', content: dto.message })
+    convo.messages.push({ role: 'user', content: rawMessage })
 
-    const queryEmbedding = await getEmbedding(dto.message, this.configService)
+    const queryEmbedding = await getEmbedding(rawMessage, this.configService)
     const messageEmbeddings = await Promise.all(
       convo.messages.map(async (m, i) => ({
         index: i,
@@ -378,7 +395,7 @@ export class ChatService {
       : '**Không có thông tin bệnh nhân cụ thể.**'
     console.log('contextualInfo', contextualInfo)
     const chatResponse = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: selectedModel,
       messages: [
         {
           role: 'system',

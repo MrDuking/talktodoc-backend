@@ -1,16 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsString } from 'class-validator'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { IsObject, IsOptional, IsString } from 'class-validator'
 
 export class CreateConversationDto {
   @ApiProperty({ example: 'user_123', description: 'ID of the user initiating the conversation' })
   @IsString()
   user_id!: string
 
-  @ApiProperty({ example: 'gpt-3.5-turbo', description: 'Model used for the conversation' })
+  @ApiPropertyOptional({
+    example: 'gpt-3.5-turbo',
+    description: 'Model to use for the conversation. If omitted, server default is used.',
+  })
+  @IsOptional()
   @IsString()
-  model_used!: string
+  model_used?: string
 
-  @ApiProperty({ example: 'context', description: 'Context of the conversation' })
-  @IsString()
-  context!: string
+  @ApiPropertyOptional({
+    example: { locale: 'vi-VN' },
+    description: 'Optional context object attached to the conversation',
+    type: Object,
+  })
+  @IsOptional()
+  @IsObject()
+  context?: Record<string, unknown>
 }

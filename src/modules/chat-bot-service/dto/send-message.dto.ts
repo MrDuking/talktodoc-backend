@@ -24,4 +24,13 @@ export class SendMessageDto {
   @IsArray()
   @IsUrl({}, { each: true })
   imageUrls?: string[]
+
+  @ApiPropertyOptional({
+    example: 'gpt-4o-mini',
+    description:
+      'Optional model override for this message. If provided, the conversation model will be switched before generating a reply.',
+  })
+  @IsOptional()
+  @IsString()
+  model?: string
 }

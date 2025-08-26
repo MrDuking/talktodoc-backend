@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { ChatService } from './chat.service'
 import { CreateConversationDto } from './dto/create-conversation.dto'
@@ -42,5 +42,17 @@ export class ChatController {
     @Body() dto: SendMessageDto,
   ): Promise<{ reply: string; messages: { role: ChatRole; content: string }[] }> {
     return this.chatService.sendMessage(conversationId, dto)
+  }
+
+  @Patch(':conversationId/model')
+  @ApiOperation({ summary: 'Đổi model AI cho cuộc hội thoại hiện tại' })
+  @ApiParam({ name: 'conversationId', description: 'ID của cuộc hội thoại' })
+  @ApiBody({ schema: { properties: { model: { type: 'string', example: 'gpt-4o' } } } })
+  @ApiResponse({ status: 200, description: 'Đổi model thành công' })
+  async switchModel(
+    @Param('conversationId') conversationId: string,
+    @Body('model') model: string,
+  ): Promise<ChatConversation> {
+    return this.chatService.switchModel(conversationId, model)
   }
 }
