@@ -10,8 +10,15 @@ import { CaseService } from '../case/case.service'
 import { SpecialtyService } from '../specialty_service/specialty.service'
 import { Patient } from '../user-service/schemas/patient.schema'
 import { UsersService } from '../user-service/user.service'
+import {
+  ConversationResponseDto,
+  GetConversationsResponseDto,
+  PaginationDto,
+} from './dto/conversation-response.dto'
 import { CreateConversationDto } from './dto/create-conversation.dto'
+import { GetConversationsDto } from './dto/get-conversations.dto'
 import { SendMessageDto } from './dto/send-message.dto'
+import { UpdateConversationDto } from './dto/update-conversation.dto'
 import { ChatConversation, ChatMessage } from './schemas/chat-conversation.schema'
 import { getEmbedding } from './utils/embedding.util'
 import { getTopKSimilarMessages } from './utils/similarity.util'
@@ -47,11 +54,15 @@ export class ChatService {
   }
 
   async createConversation(dto: CreateConversationDto): Promise<ChatConversation> {
+    const modelUsed = dto.model_used || 'gpt-3.5-turbo'
     const conversation = new this.chatModel({
       user_id: dto.user_id,
       messages: [],
-      model_used: dto.model_used || 'gpt-3.5-turbo',
+      model_used: modelUsed,
       context: dto.context || {},
+      title: this.generateTitle('ai', modelUsed),
+      type: 'ai',
+      unread_count: 0,
     })
     return conversation.save()
   }
@@ -304,6 +315,8 @@ export class ChatService {
         imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       })
       convo.messages.push({ role: 'assistant', content: reply })
+      convo.last_message = reply
+      convo.unread_count = (convo.unread_count || 0) + 1
       await convo.save()
       return { reply, messages: convo.messages as ChatMessage[] }
     }
@@ -472,8 +485,143 @@ ${contextualInfo}
     }
 
     convo.messages.push({ role: 'assistant', content: reply })
+    convo.last_message = reply
+    convo.unread_count = (convo.unread_count || 0) + 1
     await convo.save()
 
     return { reply, messages: convo.messages as ChatMessage[] }
+  }
+
+  // Sidebar API Methods
+  async getConversations(dto: GetConversationsDto): Promise<GetConversationsResponseDto> {
+    const { user_id, page = 1, limit = 20, type, search } = dto
+
+    // Build query
+    const query: Record<string, unknown> = {}
+    if (user_id) query.user_id = user_id
+    if (type) query.type = type
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { last_message: { $regex: search, $options: 'i' } },
+      ]
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit
+    const total = await this.chatModel.countDocuments(query)
+    const totalPages = Math.ceil(total / limit)
+
+    // Fetch conversations
+    const conversations = await this.chatModel
+      .find(query)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+
+    // Transform to response format
+    const data: ConversationResponseDto[] = conversations.map(conv => ({
+      id: conv._id.toString(),
+      title: conv.title || this.generateTitle(conv.type, conv.model_used),
+      lastMessage: conv.last_message || '',
+      updatedAt: (conv as Record<string, unknown>).updatedAt as string,
+      unread: conv.unread_count > 0,
+      model_used: conv.model_used || 'gpt-3.5-turbo',
+      type: conv.type || 'ai',
+      avatar: this.getAvatarUrl(conv.type),
+      participantCount: conv.type === 'doctor' ? 2 : 1,
+    }))
+
+    const pagination: PaginationDto = {
+      page,
+      limit,
+      total,
+      totalPages,
+    }
+
+    return {
+      success: true,
+      data,
+      pagination,
+    }
+  }
+
+  async markConversationAsRead(
+    conversationId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const conversation = await this.chatModel.findById(conversationId)
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found')
+    }
+
+    conversation.unread_count = 0
+    await conversation.save()
+
+    return {
+      success: true,
+      message: 'Conversation marked as read',
+    }
+  }
+
+  async deleteConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
+    const conversation = await this.chatModel.findById(conversationId)
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found')
+    }
+
+    await this.chatModel.findByIdAndDelete(conversationId)
+
+    return {
+      success: true,
+      message: 'Conversation deleted successfully',
+    }
+  }
+
+  async updateConversation(
+    conversationId: string,
+    dto: UpdateConversationDto,
+  ): Promise<ChatConversation> {
+    const conversation = await this.chatModel.findById(conversationId)
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found')
+    }
+
+    if (dto.title) conversation.title = dto.title
+    if (dto.type) conversation.type = dto.type
+    if (dto.model_used) conversation.model_used = dto.model_used
+
+    await conversation.save()
+    return conversation
+  }
+
+  // Helper methods
+  private generateTitle(type: string, modelUsed?: string): string {
+    if (type === 'doctor') {
+      return 'Bác sĩ'
+    }
+
+    if (type === 'ai') {
+      const modelLabels: Record<string, string> = {
+        'gpt-4o': 'GPT-4o',
+        'gpt-4o-mini': 'GPT-4o Mini',
+        'gpt-3.5-turbo': 'GPT-3.5 Turbo',
+      }
+      return `AI - ${modelLabels[modelUsed || 'gpt-3.5-turbo'] || modelUsed || 'GPT-3.5 Turbo'}`
+    }
+
+    return 'Cuộc trò chuyện mới'
+  }
+
+  private getAvatarUrl(type: string): string {
+    if (type === 'doctor') {
+      return 'https://example.com/doctor-avatar.jpg'
+    }
+
+    if (type === 'ai') {
+      return 'https://example.com/ai-avatar.png'
+    }
+
+    return 'https://example.com/default-avatar.png'
   }
 }

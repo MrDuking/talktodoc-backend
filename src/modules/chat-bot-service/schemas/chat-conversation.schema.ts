@@ -14,6 +14,21 @@ export class ChatConversation extends Document {
   @Prop({ required: true })
   user_id!: string
 
+  @Prop({ required: true, default: 'AI - gpt-3.5-turbo' })
+  title!: string
+
+  @Prop({ required: true, enum: ['ai', 'doctor'], default: 'ai' })
+  type!: 'ai' | 'doctor'
+
+  @Prop()
+  model_used?: string
+
+  @Prop()
+  last_message?: string
+
+  @Prop({ default: 0 })
+  unread_count!: number
+
   @Prop({
     type: [
       {
@@ -25,9 +40,6 @@ export class ChatConversation extends Document {
     required: true,
   })
   messages!: ChatMessage[]
-
-  @Prop()
-  model_used?: string
 
   @Prop()
   topic?: string
