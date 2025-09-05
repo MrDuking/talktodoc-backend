@@ -10,6 +10,7 @@ import { CaseService } from '../case/case.service'
 import { SpecialtyService } from '../specialty_service/specialty.service'
 import { Patient } from '../user-service/schemas/patient.schema'
 import { UsersService } from '../user-service/user.service'
+import { ChatJsonResponseDto, SendJsonMessageDto } from './dto/chat-json-response.dto'
 import {
   ConversationResponseDto,
   GetConversationsResponseDto,
@@ -623,5 +624,456 @@ ${contextualInfo}
     }
 
     return 'https://example.com/default-avatar.png'
+  }
+
+  // JSON Response API Method
+  async sendJsonMessage(
+    conversationId: string,
+    dto: SendJsonMessageDto,
+  ): Promise<ChatJsonResponseDto> {
+    const convo = await this.chatModel.findById(conversationId)
+    if (!convo) throw new NotFoundException('Cuộc hội thoại không tồn tại')
+
+    // Allow switching model per message if provided
+    if (dto.model && dto.model !== convo.model_used) {
+      convo.model_used = dto.model
+      await convo.save()
+    }
+    const selectedModel = convo.model_used || 'gpt-3.5-turbo'
+
+    // Get patient info and appointments
+    let patientInfo: Patient | null = null
+    const appointments: Appointment[] = []
+
+    if (convo.user_id) {
+      try {
+        patientInfo = await this.usersService.getPatientById(convo.user_id)
+      } catch (err) {
+        this.logger.warn('Không lấy được thông tin bệnh nhân', err)
+      }
+
+      try {
+        // const jwtPayload: JwtPayload = {
+        //   userId: convo.user_id,
+        //   role: 'PATIENT',
+        // }
+        // appointments = await this.appointmentService.getAppointmentsByPatient(jwtPayload)
+      } catch (err) {
+        this.logger.warn('Không lấy được lịch hẹn', err)
+      }
+    }
+
+    // Build context messages
+    const contextMessages: ChatMessage[] = []
+    if (convo.messages.length > 0) {
+      contextMessages.push(...convo.messages.slice(-10)) // Last 10 messages
+    }
+
+    // Add user message
+    convo.messages.push({
+      role: 'user',
+      content: dto.message,
+      imageUrls: dto.imageUrls || [],
+    })
+
+    // Build contextual info
+    const contextualInfo = patientInfo
+      ? `
+**Thông tin bệnh nhân:**
+- Họ và tên: ${(patientInfo as any).name || 'Chưa cập nhật'}
+- Tuổi: ${(patientInfo as any).age || 'Chưa cập nhật'}
+- Giới tính: ${patientInfo.gender || 'Chưa cập nhật'}
+- Số điện thoại: ${(patientInfo as any).phone || 'Chưa cập nhật'}
+`
+      : ''
+
+    const appointmentInfo =
+      appointments.length > 0
+        ? `
+**Lịch hẹn gần đây:**
+${appointments
+  .slice(0, 3)
+  .map(apt => `- Ngày: ${apt.date}, Giờ: ${apt.slot}, Trạng thái: ${apt.status}`)
+  .join('\n')}
+`
+        : ''
+
+    // Create system prompt for JSON response
+    const systemPrompt = `
+Bạn là trợ lý AI TalkToDoc, hỗ trợ tư vấn sức khỏe và cung cấp thông tin cá nhân hóa.
+
+**QUAN TRỌNG**: Bạn cần trả lời theo format JSON khi được yêu cầu.
+
+**FORMAT JSON RESPONSE**:
+- Nếu user hỏi về lịch hẹn: trả về JSON với type "appointment_info"
+- Nếu user muốn đặt lịch: trả về JSON với type "appointment_suggestion"  
+- Nếu user hỏi về triệu chứng: trả về JSON với type "symptom_analysis"
+- Nếu user hỏi thông tin chung: trả về JSON với type "general_info"
+
+**VÍ DỤ JSON RESPONSE**:
+\`\`\`json
+{
+  "type": "appointment_info",
+  "data": {
+    "hasAppointment": true,
+    "nextAppointment": {
+      "date": "2024-01-20",
+      "time": "14:00",
+      "doctor": "BS. Nguyễn Văn A",
+      "status": "CONFIRMED"
+    }
+  }
+}
+\`\`\`
+
+**QUY TẮC**:
+- Luôn trả lời bằng tiếng Việt
+- Kết hợp text response và JSON data
+- Không đưa ra chẩn đoán y tế cụ thể
+- Gợi ý gặp bác sĩ khi cần thiết
+
+${contextualInfo}
+${appointmentInfo}
+`.trim()
+
+    const chatResponse = await this.openai.chat.completions.create({
+      model: selectedModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...contextMessages,
+        { role: 'user', content: dto.message },
+      ],
+      temperature: 0.6,
+      max_tokens: 3000,
+    })
+
+    const reply =
+      chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
+
+    // Try to extract JSON from response
+    let jsonData: { type: string; data: Record<string, unknown> } | undefined
+
+    if (dto.requireJsonResponse || dto.jsonResponseType) {
+      // Look for JSON in the response
+      const jsonMatch = reply.match(/```json\s*(\{[\s\S]*?\})\s*```/)
+      if (jsonMatch) {
+        try {
+          const parsedJson = JSON.parse(jsonMatch[1])
+          jsonData = {
+            type: parsedJson.type || dto.jsonResponseType || 'general_info',
+            data: parsedJson.data || parsedJson,
+          }
+        } catch (err) {
+          this.logger.warn('Không thể parse JSON từ response', err)
+        }
+      }
+
+      // If no JSON found but type is specified, generate based on type
+      if (!jsonData && dto.jsonResponseType) {
+        jsonData = await this.generateJsonByType(
+          dto.jsonResponseType,
+          reply,
+          appointments,
+          patientInfo,
+        )
+      }
+    }
+
+    // Update conversation
+    convo.messages.push({ role: 'assistant', content: reply })
+    convo.last_message = reply
+    convo.unread_count = (convo.unread_count || 0) + 1
+    await convo.save()
+
+    const usage = chatResponse.usage
+    const response: ChatJsonResponseDto = {
+      success: true,
+      reply,
+      jsonData,
+      timestamp: new Date().toISOString(),
+      model: selectedModel,
+      usage: usage
+        ? {
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            totalTokens: usage.total_tokens,
+          }
+        : undefined,
+    }
+
+    return response
+  }
+
+  private async generateJsonByType(
+    type: string,
+    reply: string,
+    appointments: Appointment[],
+    patientInfo: Patient | null,
+  ): Promise<{ type: string; data: Record<string, unknown> }> {
+    switch (type) {
+      case 'appointment_info':
+        return {
+          type: 'appointment_info',
+          data: {
+            hasAppointment: appointments.length > 0,
+            totalAppointments: appointments.length,
+            nextAppointment:
+              appointments.length > 0
+                ? {
+                    appointmentId: appointments[0].appointmentId,
+                    date: appointments[0].date,
+                    slot: appointments[0].slot,
+                    status: appointments[0].status,
+                    reason: appointments[0].reason,
+                  }
+                : null,
+            recentAppointments: appointments.slice(0, 3).map(apt => ({
+              appointmentId: apt.appointmentId,
+              date: apt.date,
+              slot: apt.slot,
+              status: apt.status,
+            })),
+          },
+        }
+
+      case 'appointment_suggestion':
+        const symptoms = this.extractSymptoms(reply)
+        const availableDoctors = await this.getAvailableDoctors(symptoms)
+        const recommendedSpecialties =
+          symptoms.length > 0 ? this.getRecommendedSpecialties(symptoms) : ['nội khoa']
+
+        return {
+          type: 'appointment_suggestion',
+          data: {
+            suggested: true,
+            reason: 'Dựa trên triệu chứng và lịch sử khám bệnh',
+            urgency: 'normal',
+            recommendedSpecialty: recommendedSpecialties[0] || 'nội khoa',
+            recommendedSpecialties: recommendedSpecialties,
+            detectedSymptoms: symptoms,
+            estimatedWaitTime: '2-3 ngày',
+            availableDoctors: availableDoctors,
+            suggestedTimeSlots: this.generateTimeSlots(),
+            pricing: {
+              platformFee: 50000,
+              doctorFee: 250000,
+              discount: 0,
+              total: 300000,
+              currency: 'VND',
+            },
+            bookingInfo: {
+              minAdvanceBooking: '2 giờ',
+              maxAdvanceBooking: '30 ngày',
+              cancellationPolicy: 'Hủy miễn phí trước 2 giờ',
+              reschedulePolicy: 'Đổi lịch miễn phí trước 4 giờ',
+            },
+          },
+        }
+
+      case 'symptom_analysis':
+        return {
+          type: 'symptom_analysis',
+          data: {
+            symptoms: this.extractSymptoms(reply),
+            severity: 'mild',
+            recommendation: 'Khám bác sĩ để được tư vấn cụ thể',
+            suggestedSpecialty: 'nội khoa',
+          },
+        }
+
+      case 'patient_info':
+        return {
+          type: 'patient_info',
+          data: {
+            hasInfo: !!patientInfo,
+            name: patientInfo?.fullName || null,
+            age: patientInfo?.birthDate || null,
+            gender: patientInfo?.gender || null,
+            phone: patientInfo?.phoneNumber || null,
+          },
+        }
+
+      default:
+        return {
+          type: 'general_info',
+          data: {
+            message: reply,
+            timestamp: new Date().toISOString(),
+          },
+        }
+    }
+  }
+
+  private extractSymptoms(text: string): string[] {
+    const symptoms: string[] = []
+    const symptomKeywords = [
+      'đau đầu',
+      'sốt',
+      'ho',
+      'mệt mỏi',
+      'đau bụng',
+      'khó thở',
+      'chóng mặt',
+      'buồn nôn',
+      'đau ngực',
+      'đau lưng',
+    ]
+
+    const lowerText = text.toLowerCase()
+    symptomKeywords.forEach(symptom => {
+      if (lowerText.includes(symptom)) {
+        symptoms.push(symptom)
+      }
+    })
+
+    return symptoms
+  }
+
+  private getRecommendedSpecialties(symptoms: string[]): string[] {
+    // Mapping symptoms to specialty IDs (cần cập nhật theo database thực tế)
+    const symptomSpecialtyMap: Record<string, string[]> = {
+      'đau đầu': ['nội khoa', 'thần kinh'],
+      sốt: ['nội khoa', 'nhi khoa'],
+      ho: ['nội khoa', 'hô hấp'],
+      'mệt mỏi': ['nội khoa'],
+      'đau bụng': ['nội khoa', 'tiêu hóa'],
+      'khó thở': ['hô hấp', 'tim mạch'],
+      'chóng mặt': ['thần kinh', 'nội khoa'],
+      'buồn nôn': ['nội khoa', 'tiêu hóa'],
+      'đau ngực': ['tim mạch', 'nội khoa'],
+      'đau lưng': ['cơ xương khớp', 'nội khoa'],
+    }
+
+    const recommendedSpecialties: string[] = []
+
+    symptoms.forEach(symptom => {
+      const specialties = symptomSpecialtyMap[symptom]
+      if (specialties) {
+        recommendedSpecialties.push(...specialties)
+      }
+    })
+
+    // Remove duplicates
+    return [...new Set(recommendedSpecialties)]
+  }
+
+  private async getAvailableDoctors(symptoms?: string[]): Promise<any[]> {
+    try {
+      // Lấy danh sách bác sĩ có sẵn
+      const doctors = await this.usersService.getAllDoctors()
+
+      // Lấy thông tin specialty để populate
+      const specialties = await this.specialtyService.getAllSpecialties()
+      const specialtyMap = new Map(specialties.map(s => [s.id.toString(), s]))
+      // Filter doctors theo chuyên khoa phù hợp nếu có symptoms
+      let filteredDoctors = doctors
+      if (symptoms && symptoms.length > 0) {
+        const recommendedSpecialties = this.getRecommendedSpecialties(symptoms)
+        filteredDoctors = doctors.filter((doctor: any) =>
+          doctor.specialty.some((specId: any) => {
+            const specialty = specialtyMap.get(specId.toString())
+            return specialty && recommendedSpecialties.includes(specialty.name.toLowerCase())
+          }),
+        )
+      }
+
+      // Limit to 5 doctors
+      filteredDoctors = filteredDoctors.slice(0, 5)
+
+      return filteredDoctors.map((doctor: any) => ({
+        id: doctor._id,
+        doctorId: doctor.id, // DRxxxxxx
+        name: doctor.fullName,
+        specialty: doctor.specialty.map((specId: any) => {
+          const specialty = specialtyMap.get(specId.toString())
+          return specialty
+            ? {
+                id: specialty.id,
+                name: specialty.name,
+                description: specialty.description,
+              }
+            : { id: specId, name: 'Unknown', description: '' }
+        }),
+        experienceYears: doctor.experienceYears,
+        rating: doctor.avgScore,
+        availability: doctor.availability,
+        position: doctor.position,
+        hospital: doctor.hospital,
+        nextAvailableSlot: this.getNextAvailableSlot(doctor.availability),
+      }))
+    } catch (error) {
+      this.logger.warn('Không thể lấy danh sách bác sĩ', error)
+      return []
+    }
+  }
+
+  private generateTimeSlots(): any[] {
+    const today = new Date()
+    const timeSlots: any[] = []
+
+    // Tạo time slots cho 7 ngày tới
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date(today)
+      date.setDate(today.getDate() + i)
+
+      const dateStr = date.toISOString().split('T')[0]
+      const daySlots = this.getDayTimeSlots(dateStr)
+
+      if (daySlots.length > 0) {
+        timeSlots.push({
+          date: dateStr,
+          dayOfWeek: this.getDayOfWeek(date.getDay()),
+          slots: daySlots,
+        })
+      }
+    }
+
+    return timeSlots
+  }
+
+  private getDayTimeSlots(_date: string): any[] {
+    // Tạo các khung giờ phù hợp (8:00-17:00)
+    const slots: any[] = []
+    const startHour = 8
+    const endHour = 17
+
+    for (let hour = startHour; hour < endHour; hour++) {
+      const timeStart = `${hour.toString().padStart(2, '0')}:00`
+      const timeEnd = `${(hour + 1).toString().padStart(2, '0')}:00`
+
+      slots.push({
+        time: `${timeStart}-${timeEnd}`,
+        timeStart,
+        timeEnd,
+        available: Math.random() > 0.3, // 70% chance available
+        price: this.calculateSlotPrice(hour),
+      })
+    }
+
+    return slots.filter(slot => slot.available)
+  }
+
+  private getNextAvailableSlot(availability: any[]): string | null {
+    if (!availability || availability.length === 0) return null
+
+    // Tìm slot gần nhất có sẵn
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
+
+    return `${tomorrow.toISOString().split('T')[0]} 09:00-10:00`
+  }
+
+  private getDayOfWeek(dayIndex: number): string {
+    const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
+    return days[dayIndex]
+  }
+
+  private calculateSlotPrice(hour: number): number {
+    // Giá khác nhau theo giờ
+    if (hour >= 8 && hour < 12) return 250000 // Sáng
+    if (hour >= 12 && hour < 14) return 200000 // Trưa (giảm giá)
+    if (hour >= 14 && hour < 17) return 300000 // Chiều (cao hơn)
+    return 250000 // Mặc định
   }
 }

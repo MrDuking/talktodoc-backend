@@ -6,6 +6,7 @@ import { CreateConversationDto } from './dto/create-conversation.dto'
 import { GetConversationsDto } from './dto/get-conversations.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { UpdateConversationDto } from './dto/update-conversation.dto'
+import { ChatJsonResponseDto, SendJsonMessageDto } from './dto/chat-json-response.dto'
 import { ChatConversation, ChatRole } from './schemas/chat-conversation.schema'
 
 @ApiTags('Chat')
@@ -110,5 +111,22 @@ export class ChatController {
     @Body() dto: UpdateConversationDto,
   ): Promise<ChatConversation> {
     return this.chatService.updateConversation(conversationId, dto)
+  }
+
+  // JSON Response API Endpoint
+  @Post(':conversationId/json')
+  @ApiOperation({ summary: 'Gửi tin nhắn và nhận JSON response có cấu trúc' })
+  @ApiParam({ name: 'conversationId', description: 'ID của cuộc hội thoại' })
+  @ApiBody({ type: SendJsonMessageDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Phản hồi từ AI với JSON data có cấu trúc',
+    type: ChatJsonResponseDto,
+  })
+  async sendJsonMessage(
+    @Param('conversationId') conversationId: string,
+    @Body() dto: SendJsonMessageDto,
+  ): Promise<ChatJsonResponseDto> {
+    return this.chatService.sendJsonMessage(conversationId, dto)
   }
 }
