@@ -26,6 +26,57 @@ import { getTopKSimilarMessages } from './utils/similarity.util'
 
 const IMAGE_URL_REGEX = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|svg|bmp|tiff|tif|ico|heic|avif))/i
 
+// Specialty mapping for normalization and related specialties
+const SPECIALTY_ALIASES: Record<string, string> = {
+  'nội khoa': 'nội khoa',
+  nội: 'nội khoa',
+  'tim mạch': 'tim mạch',
+  tim: 'tim mạch',
+  'thần kinh': 'thần kinh',
+  'thần kinh học': 'thần kinh',
+  'tiêu hóa': 'tiêu hóa',
+  'tiêu hóa gan mật': 'tiêu hóa',
+  'hô hấp': 'hô hấp',
+  phổi: 'hô hấp',
+  'nhi khoa': 'nhi khoa',
+  nhi: 'nhi khoa',
+  'sản phụ khoa': 'sản phụ khoa',
+  sản: 'sản phụ khoa',
+  'phụ khoa': 'sản phụ khoa',
+  'da liễu': 'da liễu',
+  da: 'da liễu',
+  mắt: 'mắt',
+  'nhãn khoa': 'mắt',
+  'tai mũi họng': 'tai mũi họng',
+  tmh: 'tai mũi họng',
+  'cơ xương khớp': 'cơ xương khớp',
+  'xương khớp': 'cơ xương khớp',
+  'tâm thần': 'tâm thần học',
+  'tâm thần học': 'tâm thần học',
+  'tâm lý': 'tâm thần học',
+  'ung bướu': 'ung bướu',
+  'ung thư': 'ung bướu',
+  'nội tiết': 'nội tiết',
+  'tiểu đường': 'nội tiết',
+}
+
+const RELATED_SPECIALTIES: Record<string, string[]> = {
+  'nội khoa': ['tim mạch', 'nội tiết', 'tiêu hóa', 'hô hấp'],
+  'tim mạch': ['nội khoa', 'nội tiết'],
+  'thần kinh': ['nội khoa', 'tâm thần học'],
+  'tiêu hóa': ['nội khoa', 'ung bướu'],
+  'hô hấp': ['nội khoa', 'ung bướu'],
+  'nhi khoa': ['nội khoa', 'sản phụ khoa'],
+  'sản phụ khoa': ['nhi khoa', 'nội tiết'],
+  'da liễu': ['nội khoa', 'ung bướu'],
+  mắt: ['thần kinh', 'nội tiết'],
+  'tai mũi họng': ['nội khoa', 'ung bướu'],
+  'cơ xương khớp': ['nội khoa', 'thần kinh'],
+  'tâm thần học': ['thần kinh', 'nội khoa'],
+  'ung bướu': ['nội khoa', 'tiêu hóa', 'hô hấp', 'da liễu'],
+  'nội tiết': ['nội khoa', 'tim mạch', 'sản phụ khoa'],
+}
+
 @Injectable()
 export class ChatService {
   private openai: OpenAI
@@ -101,7 +152,6 @@ export class ChatService {
       } catch (err) {
         this.logger.warn('Không lấy được thông tin bệnh nhân', err)
       }
-      console.log('patientInfo', patientInfo)
 
       // Lấy tất cả các chuyên khoa để có thông tin tham khảo
       try {
@@ -470,7 +520,21 @@ ${contextualInfo}
       max_tokens: 3000,
     })
 
-    reply = chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
+    let rawReply =
+      chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
+
+    // Ensure reply is always a clean string
+    reply = rawReply
+
+    // Final safety check: ensure reply is always a string
+    if (typeof reply !== 'string') {
+      reply = String(reply)
+    }
+
+    // If reply is empty, provide a default response
+    if (!reply || reply.trim() === '') {
+      reply = 'Tôi đã xử lý yêu cầu của bạn. Vui lòng cho tôi biết nếu bạn cần hỗ trợ thêm.'
+    }
 
     // Guard: không cho trả lời vượt giới hạn
     if (reply.match(/\b(bạn bị|tôi nghĩ bạn mắc|bạn nên uống|bạn có thể dùng)\b/i)) {
@@ -643,7 +707,7 @@ ${contextualInfo}
 
     // Get patient info and appointments
     let patientInfo: Patient | null = null
-    const appointments: Appointment[] = []
+    let appointments: Appointment[] = []
 
     if (convo.user_id) {
       try {
@@ -653,11 +717,13 @@ ${contextualInfo}
       }
 
       try {
-        // const jwtPayload: JwtPayload = {
-        //   userId: convo.user_id,
-        //   role: 'PATIENT',
-        // }
-        // appointments = await this.appointmentService.getAppointmentsByPatient(jwtPayload)
+        const jwtPayload: JwtPayload = {
+          userId: convo.user_id,
+          username: patientInfo?.username || '',
+          role: 'PATIENT',
+        }
+        const appointmentsResult = await this.appointmentService.findAppointments(jwtPayload)
+        appointments = appointmentsResult.data || []
       } catch (err) {
         this.logger.warn('Không lấy được lịch hẹn', err)
       }
@@ -702,35 +768,17 @@ ${appointments
     const systemPrompt = `
 Bạn là trợ lý AI TalkToDoc, hỗ trợ tư vấn sức khỏe và cung cấp thông tin cá nhân hóa.
 
-**QUAN TRỌNG**: Bạn cần trả lời theo format JSON khi được yêu cầu.
-
-**FORMAT JSON RESPONSE**:
-- Nếu user hỏi về lịch hẹn: trả về JSON với type "appointment_info"
-- Nếu user muốn đặt lịch: trả về JSON với type "appointment_suggestion"  
-- Nếu user hỏi về triệu chứng: trả về JSON với type "symptom_analysis"
-- Nếu user hỏi thông tin chung: trả về JSON với type "general_info"
-
-**VÍ DỤ JSON RESPONSE**:
-\`\`\`json
-{
-  "type": "appointment_info",
-  "data": {
-    "hasAppointment": true,
-    "nextAppointment": {
-      "date": "2024-01-20",
-      "time": "14:00",
-      "doctor": "BS. Nguyễn Văn A",
-      "status": "CONFIRMED"
-    }
-  }
-}
-\`\`\`
-
-**QUY TẮC**:
-- Luôn trả lời bằng tiếng Việt
-- Kết hợp text response và JSON data
+**QUAN TRỌNG**: 
+- Bạn chỉ trả lời bằng TEXT thuần túy, KHÔNG bao giờ trả về JSON hoặc object
+- Luôn trả lời bằng tiếng Việt, rõ ràng và dễ hiểu
 - Không đưa ra chẩn đoán y tế cụ thể
 - Gợi ý gặp bác sĩ khi cần thiết
+
+**QUY TẮC TRẢ LỜI**:
+- Trả lời ngắn gọn, súc tích
+- Sử dụng ngôn ngữ thân thiện, dễ hiểu
+- Không sử dụng ký hiệu đặc biệt hoặc format JSON
+- Chỉ trả về câu trả lời text thuần túy
 
 ${contextualInfo}
 ${appointmentInfo}
@@ -747,14 +795,15 @@ ${appointmentInfo}
       max_tokens: 3000,
     })
 
-    const reply =
+    let rawReply =
       chatResponse.choices[0].message.content ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
 
-    // Try to extract JSON from response
+    // Ensure reply is always a clean string (remove any JSON if AI returns it)
+    let reply = rawReply
     let jsonData: { type: string; data: Record<string, unknown> } | undefined
 
     if (dto.requireJsonResponse || dto.jsonResponseType) {
-      // Look for JSON in the response
+      // Look for JSON in the response and extract it
       const jsonMatch = reply.match(/```json\s*(\{[\s\S]*?\})\s*```/)
       if (jsonMatch) {
         try {
@@ -763,6 +812,8 @@ ${appointmentInfo}
             type: parsedJson.type || dto.jsonResponseType || 'general_info',
             data: parsedJson.data || parsedJson,
           }
+          // Remove JSON from reply to keep only text
+          reply = reply.replace(/```json\s*\{[\s\S]*?\}\s*```/, '').trim()
         } catch (err) {
           this.logger.warn('Không thể parse JSON từ response', err)
         }
@@ -777,6 +828,15 @@ ${appointmentInfo}
           patientInfo,
         )
       }
+    }
+
+    // Final safety check: ensure reply is always a string
+    if (typeof reply !== 'string') {
+      reply = String(reply)
+    }
+    // If reply is empty after cleaning, provide a default response
+    if (!reply || reply.trim() === '') {
+      reply = 'Tôi đã xử lý yêu cầu của bạn. Vui lòng cho tôi biết nếu bạn cần hỗ trợ thêm.'
     }
 
     // Update conversation
@@ -825,22 +885,59 @@ ${appointmentInfo}
                     slot: appointments[0].slot,
                     status: appointments[0].status,
                     reason: appointments[0].reason,
+                    doctor: appointments[0].doctor,
                   }
                 : null,
-            recentAppointments: appointments.slice(0, 3).map(apt => ({
+            recentAppointments: appointments.slice(0, 5).map(apt => ({
               appointmentId: apt.appointmentId,
               date: apt.date,
               slot: apt.slot,
               status: apt.status,
+              doctor: apt.doctor,
             })),
           },
         }
 
       case 'appointment_suggestion':
         const symptoms = this.extractSymptoms(reply)
-        const availableDoctors = await this.getAvailableDoctors(symptoms)
         const recommendedSpecialties =
-          symptoms.length > 0 ? this.getRecommendedSpecialties(symptoms) : ['nội khoa']
+          symptoms.length > 0 ? this.getRecommendedSpecialties(symptoms) : ['tổng quát']
+
+        // Use new doctor selection system
+        const recommendedDoctors = await this.selectDoctorsBySpecialty({
+          targetSpecialtyNames: recommendedSpecialties,
+          priceTarget: 250000,
+          limit: 5,
+          // cache: this.cache, // Uncomment if cache is available
+          userId: patientInfo?.id,
+        })
+
+        // Fallback if no doctors found
+        let finalDoctors = recommendedDoctors
+        if (finalDoctors.length === 0) {
+          // Try related specialties
+          const relatedSpecs = recommendedSpecialties.flatMap(
+            spec => RELATED_SPECIALTIES[spec] || [],
+          )
+          if (relatedSpecs.length > 0) {
+            finalDoctors = await this.selectDoctorsBySpecialty({
+              targetSpecialtyNames: relatedSpecs,
+              priceTarget: 250000,
+              limit: 5,
+              userId: patientInfo?.id,
+            })
+          }
+
+          // Final fallback to general internal medicine
+          if (finalDoctors.length === 0) {
+            finalDoctors = await this.selectDoctorsBySpecialty({
+              targetSpecialtyNames: ['tổng quát'],
+              priceTarget: 250000,
+              limit: 3,
+              userId: patientInfo?.id,
+            })
+          }
+        }
 
         return {
           type: 'appointment_suggestion',
@@ -848,11 +945,11 @@ ${appointmentInfo}
             suggested: true,
             reason: 'Dựa trên triệu chứng và lịch sử khám bệnh',
             urgency: 'normal',
-            recommendedSpecialty: recommendedSpecialties[0] || 'nội khoa',
+            recommendedSpecialty: recommendedSpecialties[0] || 'tổng quát',
             recommendedSpecialties: recommendedSpecialties,
             detectedSymptoms: symptoms,
             estimatedWaitTime: '2-3 ngày',
-            availableDoctors: availableDoctors,
+            recommendedDoctors: finalDoctors,
             suggestedTimeSlots: this.generateTimeSlots(),
             pricing: {
               platformFee: 50000,
@@ -871,13 +968,15 @@ ${appointmentInfo}
         }
 
       case 'symptom_analysis':
+        const _symptoms = this.extractSymptoms(reply)
         return {
           type: 'symptom_analysis',
           data: {
-            symptoms: this.extractSymptoms(reply),
+            symptoms: _symptoms,
             severity: 'mild',
             recommendation: 'Khám bác sĩ để được tư vấn cụ thể',
-            suggestedSpecialty: 'nội khoa',
+            suggestedSpecialty:
+              _symptoms.length > 0 ? this.getRecommendedSpecialties(_symptoms) : 'tổng quát',
           },
         }
 
@@ -930,30 +1029,92 @@ ${appointmentInfo}
   }
 
   private getRecommendedSpecialties(symptoms: string[]): string[] {
-    // Mapping symptoms to specialty IDs (cần cập nhật theo database thực tế)
+    // Mapping symptoms → specialties (cần sync với DB thực tế)
     const symptomSpecialtyMap: Record<string, string[]> = {
+      // --- Các triệu chứng phổ biến ---
       'đau đầu': ['nội khoa', 'thần kinh'],
-      sốt: ['nội khoa', 'nhi khoa'],
-      ho: ['nội khoa', 'hô hấp'],
-      'mệt mỏi': ['nội khoa'],
-      'đau bụng': ['nội khoa', 'tiêu hóa'],
+      sốt: ['nội khoa', 'nhi khoa', 'truyền nhiễm'],
+      ho: ['hô hấp', 'nội khoa', 'tai mũi họng'],
+      'mệt mỏi': ['nội khoa', 'nội tiết'],
+      'đau bụng': ['nội khoa', 'tiêu hóa', 'ngoại tổng quát'],
       'khó thở': ['hô hấp', 'tim mạch'],
-      'chóng mặt': ['thần kinh', 'nội khoa'],
-      'buồn nôn': ['nội khoa', 'tiêu hóa'],
-      'đau ngực': ['tim mạch', 'nội khoa'],
+      'chóng mặt': ['thần kinh', 'nội khoa', 'tai mũi họng'],
+      'buồn nôn': ['tiêu hóa', 'nội khoa', 'thần kinh'],
+      'đau ngực': ['tim mạch', 'nội khoa', 'hô hấp'],
       'đau lưng': ['cơ xương khớp', 'nội khoa'],
+
+      // --- Hệ tiêu hóa ---
+      'tiêu chảy': ['tiêu hóa', 'nội khoa'],
+      'táo bón': ['tiêu hóa', 'nội khoa'],
+      'đầy bụng': ['tiêu hóa', 'nội khoa'],
+      'ợ chua': ['tiêu hóa', 'nội khoa'],
+      'xuất huyết tiêu hóa': ['tiêu hóa', 'ngoại tổng quát'],
+
+      // --- Hệ hô hấp ---
+      'sổ mũi': ['tai mũi họng', 'hô hấp'],
+      'nghẹt mũi': ['tai mũi họng'],
+      'đau họng': ['tai mũi họng', 'hô hấp'],
+      'khàn tiếng': ['tai mũi họng'],
+      'thở khò khè': ['hô hấp', 'nhi khoa'],
+
+      // --- Hệ thần kinh & tâm thần ---
+      'mất ngủ': ['tâm thần', 'thần kinh'],
+      'lo âu': ['tâm thần'],
+      'trầm cảm': ['tâm thần'],
+      'run tay chân': ['thần kinh'],
+      'co giật': ['thần kinh', 'nhi khoa'],
+
+      // --- Hệ cơ xương khớp ---
+      'đau khớp': ['cơ xương khớp'],
+      'sưng khớp': ['cơ xương khớp'],
+      'chuột rút': ['cơ xương khớp', 'nội khoa'],
+
+      // --- Hệ tim mạch ---
+      'huyết áp cao': ['tim mạch'],
+      'huyết áp thấp': ['tim mạch'],
+      'đánh trống ngực': ['tim mạch'],
+
+      // --- Da liễu ---
+      ngứa: ['da liễu'],
+      'phát ban': ['da liễu', 'dị ứng miễn dịch'],
+      mụn: ['da liễu'],
+      'rụng tóc': ['da liễu'],
+      'viêm da': ['da liễu'],
+
+      // --- Sản phụ khoa ---
+      'trễ kinh': ['sản phụ khoa'],
+      'đau bụng kinh': ['sản phụ khoa'],
+      'ra khí hư': ['sản phụ khoa'],
+      'ra máu bất thường': ['sản phụ khoa'],
+
+      // --- Nhi khoa ---
+      'quấy khóc': ['nhi khoa'],
+      'biếng ăn': ['nhi khoa'],
+      'chậm phát triển': ['nhi khoa'],
+
+      // --- Mắt & Tai ---
+      'mờ mắt': ['mắt'],
+      'đau mắt': ['mắt'],
+      'ngứa mắt': ['mắt'],
+      'chảy nước mắt': ['mắt'],
+      'ù tai': ['tai mũi họng'],
+      'điếc đột ngột': ['tai mũi họng'],
+
+      // --- Tiết niệu ---
+      'tiểu buốt': ['tiết niệu'],
+      'tiểu nhiều': ['tiết niệu', 'nội tiết'],
+      'tiểu ra máu': ['tiết niệu'],
     }
 
     const recommendedSpecialties: string[] = []
 
     symptoms.forEach(symptom => {
-      const specialties = symptomSpecialtyMap[symptom]
+      const specialties = symptomSpecialtyMap[symptom.toLowerCase()]
       if (specialties) {
         recommendedSpecialties.push(...specialties)
       }
     })
 
-    // Remove duplicates
     return [...new Set(recommendedSpecialties)]
   }
 
@@ -1075,5 +1236,373 @@ ${appointmentInfo}
     if (hour >= 12 && hour < 14) return 200000 // Trưa (giảm giá)
     if (hour >= 14 && hour < 17) return 300000 // Chiều (cao hơn)
     return 250000 // Mặc định
+  }
+
+  /**
+   * Normalize specialty name to standard key
+   */
+  private normSpec(name: string): string {
+    const normalized = name.toLowerCase().trim()
+    return SPECIALTY_ALIASES[normalized] || normalized
+  }
+
+  /**
+   * Enumerate next available slots for a doctor
+   */
+  private enumerateNextSlots(
+    availability: any[],
+    daysAhead: number = 14,
+  ): Array<{ start: string; end: string }> {
+    const slots: Array<{ start: string; end: string }> = []
+    const now = new Date()
+
+    for (let i = 0; i < daysAhead; i++) {
+      const date = new Date(now)
+      date.setDate(now.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+
+      // Mock availability - in real implementation, check doctor's actual availability
+      const daySlots = this.getDayTimeSlots(dateStr)
+      daySlots.forEach(slot => {
+        if (slot.available) {
+          slots.push({
+            start: `${dateStr}T${slot.timeStart}:00`,
+            end: `${dateStr}T${slot.timeEnd}:00`,
+          })
+        }
+      })
+    }
+
+    return slots
+  }
+
+  /**
+   * Calculate availability soon score based on slots
+   */
+  private availabilitySoonScore(slots: Array<{ start: string; end: string }>): number {
+    if (slots.length === 0) return 0
+
+    const now = new Date()
+    const hours48 = 48 * 60 * 60 * 1000
+    const hours168 = 168 * 60 * 60 * 1000 // 7 days
+    const hours336 = 336 * 60 * 60 * 1000 // 14 days
+
+    for (const slot of slots) {
+      const slotTime = new Date(slot.start).getTime()
+      const diff = slotTime - now.getTime()
+
+      if (diff <= hours48) return 1.0
+      if (diff <= hours168) return 0.7
+      if (diff <= hours336) return 0.3
+    }
+
+    return 0.1
+  }
+
+  /**
+   * Guess doctor price (placeholder implementation)
+   */
+  private guessDoctorPrice(_doctor: any): number | undefined {
+    // Placeholder - in real implementation, get from doctor's pricing data
+    return undefined
+  }
+
+  private computeSpecialtyFit(
+    doctorSpecialtiesNorm: string[],
+    targetNorms: string[],
+  ): {
+    fit: number
+    matchType: 'exact' | 'partial' | 'related' | 'general' | 'loose' | 'none'
+  } {
+    // Không có chuyên khoa -> vẫn cho điểm nền để không bị loại
+    if (!doctorSpecialtiesNorm || doctorSpecialtiesNorm.length === 0) {
+      return { fit: 0.3, matchType: 'none' }
+    }
+
+    // 1) Exact
+    if (doctorSpecialtiesNorm.some(spec => targetNorms.includes(spec))) {
+      return { fit: 1.0, matchType: 'exact' }
+    }
+
+    // 2) Partial (bao hàm từ khóa 2 chiều)
+    const partialHit = doctorSpecialtiesNorm.some(spec =>
+      targetNorms.some(t => spec.includes(t) || t.includes(spec)),
+    )
+    if (partialHit) {
+      return { fit: 0.85, matchType: 'partial' }
+    }
+
+    // 3) Related (nếu có bảng liên quan)
+    const relatedSpecs = targetNorms.flatMap(t => RELATED_SPECIALTIES?.[t] || [])
+    if (
+      relatedSpecs.length > 0 &&
+      doctorSpecialtiesNorm.some(spec => relatedSpecs.includes(spec))
+    ) {
+      return { fit: 0.7, matchType: 'related' }
+    }
+
+    // 4) General (nội khoa / tổng quát)
+    if (doctorSpecialtiesNorm.includes('nội khoa') || doctorSpecialtiesNorm.includes('tổng quát')) {
+      return { fit: 0.55, matchType: 'general' }
+    }
+
+    // 5) Không khớp rõ ràng -> điểm nền "loose" (không loại)
+    return { fit: 0.35, matchType: 'loose' }
+  }
+  /**
+   * Select doctors by specialty with optimized scoring and better matching
+   */
+  private async selectDoctorsBySpecialty(opts: {
+    targetSpecialtyNames: string[]
+    priceTarget?: number
+    limit?: number
+    cache?: {
+      get: (k: string) => Promise<any>
+      set: (k: string, v: any, ttl: number) => Promise<any>
+    }
+    userId?: string
+  }): Promise<any[]> {
+    const { targetSpecialtyNames, priceTarget = 250000, limit = 5, cache, userId } = opts
+
+    // Normalize target specialties
+    const targetNorms = targetSpecialtyNames.map(name => this.normSpec(name))
+    const cacheKey = `doc_suggest:${targetNorms.join(',')}:${priceTarget}`
+
+    this.logger.log('Doctor selection params:', {
+      targetSpecialtyNames,
+      targetNorms,
+      priceTarget,
+      limit,
+      userId,
+    })
+
+    // Check cache first
+    if (cache) {
+      try {
+        const cached = await cache.get(cacheKey)
+        if (cached) {
+          this.logger.log('Using cached doctor suggestions')
+          return cached
+        }
+      } catch (err) {
+        this.logger.warn('Cache get failed', err)
+      }
+    }
+
+    try {
+      // Get all doctors and specialties
+      const doctors = await this.usersService.getAllDoctors()
+      const specialties = await this.specialtyService.getAllSpecialties()
+
+      this.logger.log(`Found ${doctors.length} doctors and ${specialties.length} specialties`)
+
+      const specMap = new Map(
+        specialties.map((s: any) => [
+          s.id.toString(),
+          { id: s.id, name: s.name, norm: this.normSpec(s.name) },
+        ]),
+      )
+
+      // Filter active and approved doctors (nếu có field; hiện giữ nguyên)
+      const activeDoctors = doctors
+      this.logger.log(`Active doctors: ${activeDoctors.length}`)
+
+      if (activeDoctors.length === 0) {
+        this.logger.warn('No active doctors found')
+        return []
+      }
+
+      // Calculate scores for each doctor (chuyên khoa match lenient)
+      const scoredDoctors = activeDoctors
+        .map((doctor: any) => {
+          try {
+            // Specialty normalization cho bác sĩ
+            const doctorSpecialties = (doctor.specialty || [])
+              .map((specId: any) => {
+                const spec = specMap.get(specId.toString())
+                return spec ? spec.norm : null
+              })
+              .filter(Boolean) as string[]
+
+            // Điểm chuyên khoa mềm (không loại)
+            const { fit: specialtyFit, matchType: specialtyMatchType } = this.computeSpecialtyFit(
+              doctorSpecialties,
+              targetNorms,
+            )
+
+            // Availability
+            const slots = this.enumerateNextSlots(doctor.availability || [], 14)
+            const availabilitySoon = this.availabilitySoonScore(slots)
+
+            // Rating
+            const rating = doctor.avgScore || 0
+            const ratingNorm = Math.min(rating, 5) / 5
+
+            // Experience
+            const experienceYears = doctor.experienceYears || 0
+            let experienceNorm = 0
+            if (experienceYears >= 10) experienceNorm = 1.0
+            else if (experienceYears >= 5) experienceNorm = 0.8
+            else if (experienceYears >= 2) experienceNorm = 0.6
+            else if (experienceYears >= 1) experienceNorm = 0.4
+            else experienceNorm = 0.2
+
+            // Performance
+            const performanceScore = doctor.performanceScore || 0
+            const performanceNorm = Math.min(performanceScore, 10) / 10
+
+            // Price affinity
+            const doctorPrice = this.guessDoctorPrice(doctor) || priceTarget
+            const priceDiff = Math.abs(doctorPrice - priceTarget)
+            const priceAffinity = priceDiff === 0 ? 1.0 : 1 / (1 + priceDiff / 100000)
+
+            // Popularity
+            const ratingCount = doctor.ratingDetailsCount || 0
+            const popularityNorm = Math.min(1, ratingCount / 10)
+
+            // Location bonus
+            let locationBonus = 0
+            if (doctor.location && doctor.location.city) {
+              locationBonus = 0.02
+            }
+
+            // Score tổng (hạ nhẹ trọng số chuyên khoa để cân bằng)
+            let score =
+              0.35 * specialtyFit + // mềm hơn, để yếu tố khác kéo lên
+              0.25 * availabilitySoon +
+              0.15 * ratingNorm +
+              0.1 * experienceNorm +
+              0.05 * performanceNorm +
+              0.03 * priceAffinity +
+              0.02 * popularityNorm +
+              locationBonus
+
+            // Personalization bonus
+            if (userId && doctor.patientHistory && doctor.patientHistory[userId]) {
+              const history = doctor.patientHistory[userId]
+              if (history?.rating >= 4) {
+                score += 0.05
+              }
+            }
+
+            // Next slot format
+            const nextSlot = slots.length > 0 ? slots[0] : null
+            const nextAvailableSlot = nextSlot
+              ? `${nextSlot.start.split('T')[0]} ${nextSlot.start.split('T')[1].substring(0, 5)}-${nextSlot.end.split('T')[1].substring(0, 5)}`
+              : null
+
+            return {
+              doctor,
+              score: Math.round(score * 1000) / 1000,
+              nextAvailableSlot,
+              hospitalName: doctor.hospital?.name || doctor.hospital || 'Chưa xác định',
+              specialtyMatchType,
+              rating,
+              experienceYears,
+              availabilityCount: slots.length,
+            }
+          } catch (err) {
+            this.logger.warn(`Error processing doctor ${doctor?.id}:`, err)
+            return null
+          }
+        })
+        .filter(Boolean) as Array<{
+        doctor: any
+        score: number
+        nextAvailableSlot: string | null
+        hospitalName: string
+        specialtyMatchType: 'exact' | 'partial' | 'related' | 'general' | 'loose' | 'none'
+        rating: number
+        experienceYears: number
+        availabilityCount: number
+      }>
+
+      this.logger.log(`Scored doctors: ${scoredDoctors.length}`)
+
+      if (scoredDoctors.length === 0) {
+        this.logger.warn('No doctors passed scoring')
+        return []
+      }
+
+      // Sort by score desc
+      scoredDoctors.sort((a, b) => (b?.score || 0) - (a?.score || 0))
+
+      // Diversification
+      const diversified: any[] = []
+      const hospitalCount: Record<string, number> = {}
+      const specialtyCount: Record<string, number> = {}
+
+      // First pass: ưu tiên exact + high score
+      for (const item of scoredDoctors) {
+        if (!item) continue
+        if (diversified.length >= limit) break
+
+        const hospital = item.hospitalName
+        const specialty = item.specialtyMatchType
+        const currentHospitalCount = hospitalCount[hospital] || 0
+        const currentSpecialtyCount = specialtyCount[specialty] || 0
+
+        // Cho phép nhiều hơn nếu exact
+        const maxPerHospital = item.specialtyMatchType === 'exact' ? 3 : 2
+        const maxPerSpecialty = 2
+
+        if (currentHospitalCount < maxPerHospital && currentSpecialtyCount < maxPerSpecialty) {
+          diversified.push(item)
+          hospitalCount[hospital] = currentHospitalCount + 1
+          specialtyCount[specialty] = currentSpecialtyCount + 1
+        }
+      }
+
+      // Second pass: fill remaining slots
+      if (diversified.length < limit) {
+        for (const item of scoredDoctors) {
+          if (diversified.length >= limit) break
+          if (item && !diversified.includes(item)) {
+            diversified.push(item)
+          }
+        }
+      }
+
+      this.logger.log(`Final diversified doctors: ${diversified.length}`)
+
+      // Format output
+      const result = diversified.map(item => {
+        const d = item.doctor
+        const specs = (d.specialty || []).map((specId: any) => {
+          const spec = specMap.get(specId.toString())
+          return spec ? { id: spec.id, name: spec.name } : { id: specId, name: 'Unknown' }
+        })
+
+        return {
+          id: d._id,
+          doctorId: d.id,
+          name: d.fullName,
+          specialty: specs,
+          experienceYears: d.experienceYears,
+          rating: d.avgScore,
+          position: d.position,
+          hospital: item.hospitalName,
+          nextAvailableSlot: item.nextAvailableSlot,
+          score: item.score,
+          specialtyMatchType: item.specialtyMatchType,
+          availabilityCount: item.availabilityCount,
+        }
+      })
+
+      // Cache 10 phút
+      if (cache) {
+        try {
+          await cache.set(cacheKey, result, 600)
+        } catch (err) {
+          this.logger.warn('Cache set failed', err)
+        }
+      }
+
+      this.logger.log(`Returning ${result.length} doctors`)
+      return result
+    } catch (error) {
+      this.logger.error('Error selecting doctors by specialty', error)
+      return []
+    }
   }
 }

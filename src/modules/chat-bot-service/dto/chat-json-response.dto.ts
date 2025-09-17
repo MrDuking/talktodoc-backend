@@ -4,7 +4,10 @@ export class ChatJsonResponseDto {
   @ApiProperty({ example: true, description: 'Trạng thái thành công' })
   success!: boolean
 
-  @ApiProperty({ example: 'Tôi hiểu bạn muốn khám bệnh...', description: 'Phản hồi text từ AI' })
+  @ApiProperty({ 
+    example: 'Tôi hiểu bạn muốn khám bệnh...', 
+    description: 'Phản hồi text từ AI. Nếu có cả requireJsonResponse và jsonResponseType, reply sẽ chỉ chứa text (không có JSON)' 
+  })
   reply!: string
 
   @ApiPropertyOptional({
@@ -66,13 +69,13 @@ export class SendJsonMessageDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Có yêu cầu trả về JSON structured data không',
+    description: 'Có yêu cầu trả về JSON structured data không. Nếu có cả requireJsonResponse và jsonResponseType, reply sẽ chỉ chứa text',
   })
   requireJsonResponse?: boolean
 
   @ApiPropertyOptional({
     example: 'appointment_suggestion',
-    description: 'Loại JSON response mong muốn',
+    description: 'Loại JSON response mong muốn. Nếu có cả requireJsonResponse và jsonResponseType, reply sẽ chỉ chứa text',
   })
   jsonResponseType?: string
 }
